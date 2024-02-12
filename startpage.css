@@ -1,0 +1,678 @@
+@font-face {
+  font-family: "win98";
+  src: url("win98.ttf") format('truetype');
+}
+
+
+
+  body {
+    font-family: 'win98', sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+  }
+
+  .icon {
+    display:flex;
+    flex-direction: column;
+  }
+
+  header {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+    
+  }
+
+
+
+  p, h1, h2, h3, q {
+    text-align: center;
+    font-family: 'win98', sans-serif;
+  }
+
+  h2 {
+    color: white;
+    text-align: left;
+    line-height:30px;
+    text-shadow: 1px 1px 1px black;
+    margin: 0;
+ 
+    padding: 2px 5px;
+    
+  }
+
+  h1 {
+    font-size: 4vw;
+    margin: 0;
+    text-shadow: 2px 2px 2px black;
+    color: white;
+    padding-left: 10px;
+    padding-right: 10px;
+    flex: 1;
+   
+  }
+
+
+
+  h3 {
+    font-size: 20px;
+    color: rgb(64, 255, 64);
+    text-shadow: 1px 1px 1px black; 
+    padding-left: 5px;
+    padding-right: 5px;
+    flex: 1;
+    margin: 0;
+
+  }
+
+  p, li { color: black;
+    
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    
+  
+  }
+
+
+#appMenu label {
+  font-family: "win98", sans-serif;
+  font-weight: normal;
+  font-size: medium;
+
+}
+
+  #startBtn img {
+    padding-top: 3px;
+    padding-right: 5px;
+  }
+
+  #appMenu li:hover {
+    background-color: #000099;
+    color: white;
+  }
+
+ #skillsContainer ul {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    flex-direction: column;
+      }
+
+ #skillsContainer {
+        display: none;
+        max-width: 500px;
+        min-width: 200px;
+        max-height: 300px;
+ }
+
+ #todoContainer p {
+    margin-top: 1px;
+    padding: 0;
+   
+  }
+
+  #todoContainer {
+    max-width: 500px;
+  }
+
+  #calcContainer {
+    display: none;
+    max-width: 250px;
+    max-height: 400px;
+  }
+  
+  #wallpContainer {
+    min-width: 100px;
+    max-width: 300px;
+    height: 100px;
+  }
+ 
+
+ 
+  #calendarContainer {
+    display: none;
+    min-width: fit-content;
+    max-width: fit-content;
+
+  }
+
+  #weekGraph {
+    padding: 10px;
+  }
+
+  q {
+        text-shadow: 1px 1px 1px black;
+  }
+
+  .clock {
+    font-size: 1.3em;
+    
+    color: black;
+    text-shadow: 1px 1px 1px white;
+    padding: 5px;
+    padding-bottom: 0px;
+    font-family: "win98", sans-serif;
+    margin-left: auto;  
+    margin-right: 5px;
+    margin-bottom: 5px;
+    min-width: 80px;
+
+    border-bottom: 2px solid #DDDDDD;
+    border-right: 2px solid #EEEEEE;
+    border-left: 1px solid #222222;
+    border-top: 1px solid #222222;
+
+  }
+  
+  span { padding: 0;
+          margin: 0;}
+
+  section {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  
+
+    
+  }
+
+  .quadros {
+   
+    margin: 20px 20px;
+    background: #CCCCCC;
+    flex: 1 300px;
+   
+    border-top: 3px solid #DDDDDD;
+    border-left: 3px solid #EEEEEE;
+    border-right: 4px solid #222222;
+    border-bottom: 4px solid #222222;
+    z-index: 2;
+  }
+
+
+  #appMenu {
+    border-right: 3px solid #222222;
+    border-bottom: 3px solid #222222;
+    height:fit-content;
+    width: 270px;
+  }
+
+  #greetings {
+    background-color: black;
+    padding: 2px;
+    margin-bottom: 5vh;
+    margin-top: 5vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 100%;
+    
+  }
+
+
+  #linkContainer {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    
+    width: 100%;
+    position: fixed;
+    background-color: #C0C0C0;    
+    bottom: 0px;
+    padding: 3px 0px 0px 0px;
+    border-top: 3px solid #DDDDDD;
+    height: calc(30px + 1vh);    
+  }
+
+  #linksBar {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex: 1 800px;
+    margin-left: 0.5vw;
+    margin-top: 0.5vw;
+  }
+
+ #startBtn {
+    font-size: 1.5rem;
+    margin: 0.5vh 0vh 1vh 0.5vh;
+    font-weight: 900;
+    display: flex;
+    border-top: 2px solid #DDDDDD;
+    border-left: 2px solid #EEEEEE;
+    border-right: 2px solid #222222;
+    border-bottom: 2px solid #222222;
+ }
+
+ .barDivider {
+  margin: 0.5vh 0.5vh 1vh 0.7vh;
+
+  width: 0px;
+  height: 80%;
+  border-left: 1px solid darkslategrey;
+  border-right: 1px solid white;
+ }
+
+ .barDividerFat {
+  width: 0px;
+  height: 70%;
+  border-left: 2px ridge white;
+  border-right: 2px ridge grey;
+  margin: 0.5vh 0.5vh 1vh 0vh;
+
+ }
+
+
+
+  #bgContainer {
+        height: 100%;
+        width: 100%;
+        background-image: url("imagens/windowsgreen.jpeg");
+        background-size: cover; /* or use a specific length value, e.g., background-size: 100px; */
+        background-position: center;
+        background-repeat: repeat-y;
+        color: white;
+      
+  }
+
+
+ .skillBox {
+    border: 1px solid rgb(11, 6, 45);
+    display: flex;
+    margin: 10px 5px;
+    
+    justify-content: space-between;
+    flex-direction: row;
+    background-color: white;
+ }
+
+
+ .skillDetails {
+    display: flex;
+    flex-direction: column;
+    width: 80%;
+    border-right: 1px solid black;
+    border-left: 1px solid black;
+    padding-right: 8px;
+    padding-left: 8px;
+ }
+
+
+ .skillInfo {
+    display: flex;
+    justify-content: space-between;
+    
+ }
+
+ #projetosBox {
+  display: flex;
+  justify-content: space-around;
+ }
+
+ .projetoBox {
+  border: 1px solid rgb(11, 6, 45);
+  display: flex;
+  margin: 10px 5px;
+  justify-content: space-between;
+  flex-direction: row;
+  background-color: white;
+}
+
+
+.projetoDetails {
+  display: flex;
+  flex-direction: column;
+  width: 80%;
+  border-right: 1px solid black;
+  border-left: 1px solid black;
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+
+.projetoInfo {
+  display: flex;
+  justify-content: space-between;
+}
+
+
+ .infoRight {
+  justify-content: end;
+  display: flex;
+  gap: 10px;
+  
+ }
+
+label {
+  font-size: 34px;
+  color: black;
+  font-weight: 800;
+  font-family: "win98", sans-serif;
+
+ }
+
+ .icon:hover {
+  cursor: pointer
+ }
+
+ .icon:active {
+  background-color: #000099;
+ }
+
+ .icon:active label {
+  color: white;
+ }
+
+ #pomodoroIconDiv {
+  position: absolute;
+  top: 200px;
+  left: 30px;
+  z-index: 0;
+ }
+
+ #todoIconDiv {
+  position: absolute;
+  top: 300px;
+  left: 30px;
+  z-index: 0;
+ }
+
+ #calendarIconDiv {
+  position: absolute;
+  top: 400px;
+  left: 30px;
+  z-index: 0;
+ }
+
+#projetosContainer {
+  display: none;
+  max-height: 125px;
+  max-width: 250px;
+}
+
+
+.icon label {
+  font-size: medium;
+  font-weight: normal;
+
+  width: 80px;
+ }
+
+ .icon img {
+  margin-left: 10px;
+ }
+
+ #todoIconDiv img {
+  margin-left: 0;
+ }
+
+ /* POMODORO CONTENTS */
+
+
+#timer-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+}
+
+#timer {
+    font-size: 2.5rem;
+   
+    background-color: rgba(250, 250, 250, 0.8);
+    color: black;
+    padding: 4px;
+}
+
+#buttons {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+}
+
+
+button {
+   
+  font-size: 1.2rem;
+  cursor: pointer;
+  background-color: #C0C0C0;
+  color: black;
+  border-top: 3px solid #DDDDDD;
+  border-left: 3px solid #EEEEEE;
+  border-right: 3px solid #222222;
+  border-bottom: 3px solid #222222;
+  font-family: "win98", sans-serif;
+  transition: background-color 0.3s;
+ 
+}
+
+
+button:active {
+  border-bottom: 3px solid #DDDDDD;
+  border-right: 3px solid #EEEEEE;
+  border-left: 3px solid #222222;
+  border-top: 3px solid #222222;
+}
+
+
+.skillBtn {
+  height:70px;
+  width: 50px;
+  background-color: #C0C0C0; 
+  transition: background-color 0.3s;
+  color: black;
+  font-size: 30px;
+  font-weight:bolder;
+
+}
+
+.skillBtn:hover {
+  background-color: #666666;
+  color: white;
+}
+
+.projetoBtn {
+  height:70px;
+  width: 50px;
+  background-color: #C0C0C0;
+  transition: background-color 0.3s;
+  color: black;
+  font-size: 30px;
+  font-weight:bolder;
+
+}
+
+.projetoBtn:hover {
+  background-color: #666666;
+  color: white;
+}
+
+
+
+#todoContainer button {
+    background-color: grey;
+    height: 1.5rem;
+    width: 1.5rem;
+    padding: 0;
+    
+}
+
+
+a img {
+  transition: transform 0.3s;
+}
+
+a:hover img {
+  transform: scale(1.3);
+}
+
+table {
+  border-collapse: collapse;
+  margin: 15px auto;
+}
+
+td, th {
+  border: 1px solid black;
+  padding: 3px;
+  min-width: 70px;
+  background-color: antiquewhite;
+  color: black;
+
+}
+
+th {
+  background-color:  #666666;
+  color: white;
+}
+
+
+#searchWeb {
+  min-height: 100px;
+  flex: 1 300px;
+  max-width: 500px;
+  max-height: 160px;
+  display: none;
+
+}
+
+#pomodoroSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 1.5vh 0;
+  padding: 10px;
+
+}
+
+#pomodoroSection img {
+  display: block;
+  flex: 1;
+  margin-right: 2vw;
+}
+
+#pomodoro {
+  min-height: 200px;
+  max-height: 200px;
+  flex: 1 200px;
+  min-width: 400px;
+  max-width: 400px;
+  padding-bottom: 10px;
+  display: none;
+
+}
+
+
+#taskInput {
+  margin-top: 15px;
+}
+
+#taskList {
+  background-color: white;
+  width: 40%;
+  margin: 10px auto;
+  font-weight: bold;
+  font-size: 18px;
+  list-style: square outside;
+  display: flex;
+  flex-direction: column;
+  
+  
+  
+} 
+
+#taskList li {
+  margin: 8px auto;
+  color: black;
+  list-style: lower-greek;
+
+
+
+}
+  
+
+
+#projetosBox {
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+}
+
+
+
+#calculator {
+  text-align: center;
+  padding: 20px 0px;
+  margin: 0;
+  
+  border: 1px solid black;
+ 
+}
+
+
+
+input {
+  width: 40px;
+  height: 40px;
+  margin: 5px;
+  font-size: 18px;
+}
+
+
+input[type="text"] {
+  width: 200px;
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+
+
+#appMenu li {
+  list-style-type: none;
+  text-align: left;
+  padding-bottom: 10px;
+  margin-left: -35px;
+  gap: 10px;
+}
+
+legend {
+  margin: auto;
+  color: black;
+}
+
+.titleBar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  background: linear-gradient(to right, #000080, #1E88CD);  
+}
+
+
+
+.titleBar button {
+  margin: 3px;
+  width: 25px;
+  height: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: sans-serif;
+  padding-bottom: 5px;
+
+}
+
+
+#calendarContainer td:nth-of-type(1) {
+  background-color: #1E88CD;
+}

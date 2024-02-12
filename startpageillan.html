@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Retro 90's Desktop Startpage</title>
+    <link rel="stylesheet" href="startpage.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400&display=swap">
+    <link rel="stylesheet" href="win98.ttf">
+    <script src="startpage.js" defer></script>
+  </head>
+  <body>
+    <div id="bgContainer"  style="background-image: url('./imagens/windowsgreen.png')";>
+    <header>
+    
+      <div id="greetings">
+        <h1>Bom dia, i!</h1>
+        <h3>Tenha uma ótima quinta ( :</h3>
+      </div>
+   
+   </header>
+   <div class="icon" id="pomodoroIconDiv" onclick="hideQuadro('pomodoro')">
+      <img src="./imagens/tomatoo.png" width="60">
+      <label>Pomodoro</label>
+   </div>
+   <div class="icon" id="todoIconDiv" onclick="hideQuadro('todoContainer')">
+    <img src="./imagens/w98_notepad.ico" width="60">
+    <label>To Do List</label>
+ </div>
+
+   <div class="icon" id="calendarIconDiv" onclick="hideQuadro('calendarContainer')">
+     <img src="./imagens/w98_calendar.ico" width="60">
+     <label>Calendar</label>
+   </div>
+
+   <section>
+        <div class="quadros" id="skillsContainer" style="display: none">
+          <div class="titleBar">
+        <h2>Daily Skills</h2>
+        <button onclick="hideQuadro('skillsContainer')">x</button>
+         </div>
+        
+            <div class="skillBox">
+                <button class="skillBtn" id="codeBtn" onclick="codeXp()">+</button>
+                <div class="skillDetails">
+                    <div class="skillInfo">
+                        <label for="coding">Coding</label><span class="infoRight"><p id="codeStrk">streak:0</p></span>
+                    </div>
+                    <meter id="codeMeter" min="0" max="50" low="20" high="30" optimum="40" value="1"></meter>
+                </div>
+                <img src="./imagens/keywave.png" width="70" height="70"/>
+            </div>
+            <div class="skillBox">
+              <button class="skillBtn" id="physicalBtn" onclick="physicalXp()">+</button>
+              <div class="skillDetails">
+                  <div class="skillInfo">
+                      <label for="physical education">Physical</label><span class="infoRight"><p id="physicalStrk">streak:0</p></span>
+                  </div>
+                  <meter id="physicalMeter" min="0" max="50" low="20" high="30" optimum="40" value="1"></meter>
+              </div>
+              <img src="./imagens/gym.png" width="70" height="70"/>
+          </div>
+        </div>
+
+      <div id="todoContainer" class="quadros" style="display: none">
+        <div class="titleBar">
+          <h2>To Do List</h2>
+          <button onclick="hideQuadro('todoContainer')">x</button>
+           </div>
+        <input type="text" id="taskInput" placeholder="Enter task">
+        <button onclick="addTask()">+</button>
+        <ul id="taskList"></ul>
+      </div>
+      <div class="quadros" id="calendarContainer" style="display: none">
+        <div class="titleBar">
+          <h2 id="calendarTitle">Calendário</h2>
+          <button onclick="hideQuadro('calendarContainer')">x</button>
+           </div>
+        <div id="weekGraph"></div>
+      </div>
+      
+    </section>
+    <div id="linkContainer">
+      <button id="startBtn" onclick="hideAppMenu(), clickStart()">
+        <img src="./imagens/debianlogo.png"
+             width="20" height="25" alt="icone do debian linux">
+        Iniciar
+      </button>
+
+        <div class="barDivider"></div>
+        <div class="barDividerFat"></div>
+      
+      <div id="linksBar">
+       
+        <a title="chatgpt" href="https://chat.openai.com" target="_blank">
+            <img src="./imagens/chatgpt.png" alt="ícone do chatgpt" width="30" height="28">
+          </a> 
+        <a href="https://www.freecodecamp.org/learn" target="_blank">
+          <img src="./imagens/fcc2.png" alt="ícone do free code camp" width="30" height="28">
+        </a>
+        <a href="https://developer.mozilla.org/en-US/docs/Learn/Tools_and_testing/Client-side_JavaScript_frameworks/React_interactivity_events_state" target="_blank">
+          <img src="./imagens/mdn1.png" alt="ícone do MDN" width="30" height="28">
+        </a>
+        <a href="https://github.com" target="_blank">
+          <img src="./imagens/github.png" alt="ícone do git" width="30" height="28">
+        </a>
+        <a href="https://www.reddit.com/r/Frontend//" target="_blank">
+          <img src="./imagens/reddit.png" alt="ícone do reddit" width="30" height="28">
+        </a>
+        <a href="file:///home/illan/Documentos/XII%20Works%20of%20Herkillan/tapago2.0/tapago2.html" target="_blank">
+            <img src="./imagens/tapago.png" alt="ícone de uma barra de ferro com anilhas" width="30" height="28">
+        </a>
+        <a href="https://youtube.com" target="_blank">
+          <img src="./imagens/yt.png" alt="ícone do youtube" width="30" height="28">
+        </a>
+       
+        <a href="https://twitter.com" target="_blank">
+          <img src="./imagens/twitter.png" alt="ícone do twitter" width="30" height="28">
+        </a>
+        <a href="https://web.whatsapp.com/" target="_blank">
+          <img src="./imagens/wpp.png" alt="ícone do whatsapp" width="30" height="28">
+        </a> 
+        <a href="https://thepiratebay.org/index.html" target="_blank">
+          <img src="./imagens/tpb.png" alt="icone do pirate bay" width="30" height="28">
+        </a>
+        <a href="https://opensubtitles.org" target="_blank">
+          <img src="./imagens/opensub.png" alt="icone do opensubtitles" width="33" height="28">
+        </a>
+        <a href="https://apod.nasa.gov/apod/astropix.html" target="_blank">
+          <img src="./imagens/nasa.jpg" alt="icone da nasa" width="30" height="28">
+        </a>
+        <div class="clock">
+          <span id="hours"></span><span id="minutes"></span><span id="seconds"></span>
+        </div>
+      </div>
+      
+    </div>
+  <section>
+    <div class="quadros" id="pomodoro" style="display: none">
+      <div class="titleBar">
+        <h2>Pomodoro</h2>
+        <button onclick="hideQuadro('pomodoro')">x</button>
+         </div>
+     
+        <div id="timer-container">
+          <div class="subSection" id="pomodoroSection">
+          
+          <img src="./imagens/tomato.png" alt="ilustração de tomate"  height="60"/>
+          <div id="timer">25:00</div>
+          </div>
+          <div id="buttons">
+            <button onclick="startTimer(25)">Start</button>
+            <button onclick="startTimer(5)">Short Rest</button>
+            <button onClick="startTimer(20)">Long Rest</button>
+            <button onclick="resetTimer()">Stop</button>
+          </div>
+        </div>
+    </div>
+    <div class="quadros" id="searchWeb" style="display: none">
+      <div class="titleBar">
+        <h2>Search The Web</h2>
+        <button onclick="hideQuadro('searchWeb')">x</button>
+         </div>
+      <div class="gcse-search"></div>
+    </div>
+
+   <!-- <div class="quadros" id="quoteContainer">
+      
+    </div>  -->
+    <div class="quadros" id="projetosContainer" style="display: none">
+      <div class="titleBar">
+        <h2>Projetos</h2>
+        <button onclick="hideQuadro('projetosContainer')">x</button>
+         </div>
+      <div id="projetosBox">
+<!----           <div class="projetoBox">
+          <button class="projetoBtn" onclick="reactXp()">+</button>
+          <div class="projetoDetails">
+              <div class="projetoInfo">
+                  <label for="react">𝕽𝖊𝖆𝖈𝖙</label><span class="infoRight"><p>FCC</p></span>
+              </div>
+              <meter id="reactMeter" min="0" max="101" low="20" high="60" optimum="90" value="0"></meter>
+          </div>
+          <img src="./imagens/reactfcc.png" width="75" height="70"/>
+        </div> -->
+     
+          <div class="projetoBox">
+          <button class="projetoBtn" onclick="fccXp()">+</button>
+          <div class="projetoDetails">
+              <div class="projetoInfo">
+                <label for="fcc first certification">FCC</label><span class="infoRight"><p id="fccLvl">#1</p></span>
+              </div>
+            <meter id="fccMeter" min="0" max="5" low="2" high="4" optimum="5" value="0"></meter>
+          </div>
+          <img src="./imagens/fcc1.png" width="70" height="70"/>
+          </div>
+      </div>
+      
+    </div>
+  <div class="quadros" id="calcContainer" style="display: none">
+    <div class="titleBar">
+      <h2>Calculadora</h2>
+      <button onclick="hideQuadro('calcContainer')">x</button>
+       </div>
+    
+<div id="calculator">
+  <input type="text" id="display" readonly>
+  <br>
+  <input type="button" value="1" onclick="appendToDisplay('1')">
+  <input type="button" value="2" onclick="appendToDisplay('2')">
+  <input type="button" value="3" onclick="appendToDisplay('3')">
+  <input type="button" value="/" onclick="appendToDisplay('/')">
+  <br>
+  <input type="button" value="4" onclick="appendToDisplay('4')">
+  <input type="button" value="5" onclick="appendToDisplay('5')">
+  <input type="button" value="6" onclick="appendToDisplay('6')">
+  <input type="button" value="-" onclick="appendToDisplay('-')">
+  <br>
+  <input type="button" value="7" onclick="appendToDisplay('7')">
+  <input type="button" value="8" onclick="appendToDisplay('8')">
+  <input type="button" value="9" onclick="appendToDisplay('9')">
+  <input type="button" value="+" onclick="appendToDisplay('+')">
+  <br>
+  <input type="button" value="0" onclick="appendToDisplay('0')">
+  <input type="button" value="." onclick="appendToDisplay('.')">
+  <input type="button" value="C" onclick="clearDisplay()">
+  <input type="button" value="=" onclick="calculate()">
+</div>
+
+</div>
+<div class="quadros" id="wallpContainer" style="display: none">
+  <div class="titleBar">
+    <h2>Papel de Parede</h2>
+    <button onclick="hideQuadro('wallpContainer')">x</button>
+     </div>
+  <fieldset>
+    <legend>Selecione um Papel de Parede</legend>
+      <select id="selectWallp">
+        <option value="0">XP</option>
+        <option value="1">98</option>
+        <option value="2">Clouds</option>
+      </select>
+    </fieldset>
+</div>
+
+</section>
+    <div id="appMenu" class="quadros">
+        <ul>
+            <li onclick="hideQuadro('pomodoro')"><img src="./imagens/tomatoo.png" width="35" height="35">  Pomodoro</li>
+            <li onclick="hideQuadro('todoContainer')"><img src="./imagens/w98_notepad.ico" width="35" height="35"> To Do list</li>
+            <li onclick="hideQuadro('skillsContainer')"><img src="./imagens/w98_accessibility_stopwatch.ico" width="35" height="35">Daily Skills</li>
+            <li onclick="hideQuadro('calendarContainer')"><img src="./imagens/w98_calendar.ico" width="35" height="35"> Calendar</li>
+            <li onclick="hideQuadro('searchWeb')"><img src="imagens/w98_search_web.ico" width="35" height="35"> Search the Web</li>
+            <li onclick="hideQuadro('projetosContainer')"><img src="./imagens/w98_briefcase.ico" width="35" height="35"> Projetos</li>
+            <li onclick="hideQuadro('calcContainer')"><img src="./imagens/w98_calculator.ico" width="35" height="35"> Calculator</li>
+            <li onclick="hideQuadro('wallpContainer')"><img src="./imagens/w98_directory_pictures.ico" width="35" height="35">Wallpaper</li>
+          </ul>
+    </div>
+  <script async src="https://cse.google.com/cse.js?cx=c35d5bde231d24650">
+  </script>
+  </body>
+</html>
