@@ -15,28 +15,33 @@
     
       <div id="greetings">
         <h1>Bom dia, i!</h1>
-        <h3>Tenha uma ótima quinta ( :</h3>
+        <h3></h3>
       </div>
    
    </header>
    <div class="icon" id="pomodoroIconDiv" onclick="hideQuadro('pomodoro')">
       <img src="./imagens/tomatoo.png" width="60">
-      <label>Pomodoro</label>
+      <label>pomodoro</label>
    </div>
    <div class="icon" id="todoIconDiv" onclick="hideQuadro('todoContainer')">
     <img src="./imagens/w98_notepad.ico" width="60">
-    <label>To Do List</label>
+    <label>to-do list</label>
  </div>
 
-   <div class="icon" id="calendarIconDiv" onclick="hideQuadro('calendarContainer')">
+   <div class="icon" id="calendarIconDiv" onclick="clearDisplay(), hideQuadro('calendarContainer')">
      <img src="./imagens/w98_calendar.ico" width="60">
-     <label>Calendar</label>
+     <label>calendar</label>
    </div>
+
+   <div class="icon" id="recIconDiv" onclick="hideQuadro('recContainer')">
+    <img src="./imagens/w98_netshow_notransm.ico" width="60">
+    <label>rec list</label>
+  </div>
 
    <section>
         <div class="quadros" id="skillsContainer" style="display: none">
           <div class="titleBar">
-        <h2>Daily Skills</h2>
+        <h2>Skills</h2>
         <button onclick="hideQuadro('skillsContainer')">x</button>
          </div>
         
@@ -44,7 +49,7 @@
                 <button class="skillBtn" id="codeBtn" onclick="codeXp()">+</button>
                 <div class="skillDetails">
                     <div class="skillInfo">
-                        <label for="coding">Coding</label><span class="infoRight"><p id="codeStrk">streak:0</p></span>
+                        <label for="coding">coding</label><span class="infoRight"><p id="codeStrk">streak:0</p></span>
                     </div>
                     <meter id="codeMeter" min="0" max="50" low="20" high="30" optimum="40" value="1"></meter>
                 </div>
@@ -62,16 +67,28 @@
           </div>
         </div>
 
-      <div id="todoContainer" class="quadros" style="display: none">
+      <div id="todoContainer" class="quadros" style="display: block">
         <div class="titleBar">
-          <h2>To Do List</h2>
+          <h2>To-do List</h2>
           <button onclick="hideQuadro('todoContainer')">x</button>
            </div>
         <input type="text" id="taskInput" placeholder="Enter task">
         <button onclick="addTask()">+</button>
         <ul id="taskList"></ul>
       </div>
-      <div class="quadros" id="calendarContainer" style="display: none">
+
+      <div id="recContainer" class="quadros" style="display: block">
+        <div class="titleBar">
+          <h2>Rec List</h2>
+          <button onclick="hideQuadro('recContainer')">x</button>
+           </div>
+        <input type="text" id="recInput" placeholder="Enter rec">
+        <button onclick="addRec()">+</button>
+        <ul id="recList"></ul>
+      </div>
+
+
+      <div class="quadros" id="calendarContainer"  style="display: none">
         <div class="titleBar">
           <h2 id="calendarTitle">Calendário</h2>
           <button onclick="hideQuadro('calendarContainer')">x</button>
@@ -84,7 +101,7 @@
       <button id="startBtn" onclick="hideAppMenu(), clickStart()">
         <img src="./imagens/debianlogo.png"
              width="20" height="25" alt="icone do debian linux">
-        Iniciar
+             Iniciar
       </button>
 
         <div class="barDivider"></div>
@@ -136,7 +153,7 @@
       
     </div>
   <section>
-    <div class="quadros" id="pomodoro" style="display: none">
+    <div class="quadros" id="pomodoro"  style="display: none">
       <div class="titleBar">
         <h2>Pomodoro</h2>
         <button onclick="hideQuadro('pomodoro')">x</button>
@@ -151,12 +168,12 @@
           <div id="buttons">
             <button onclick="startTimer(25)">Start</button>
             <button onclick="startTimer(5)">Short Rest</button>
-            <button onClick="startTimer(20)">Long Rest</button>
+            <button onclick="startTimer(20)">Long Rest</button>
             <button onclick="resetTimer()">Stop</button>
           </div>
         </div>
     </div>
-    <div class="quadros" id="searchWeb" style="display: none">
+    <div class="quadros" id="searchWeb"  style="display: none">
       <div class="titleBar">
         <h2>Search The Web</h2>
         <button onclick="hideQuadro('searchWeb')">x</button>
@@ -173,58 +190,59 @@
         <button onclick="hideQuadro('projetosContainer')">x</button>
          </div>
       <div id="projetosBox">
-<!----           <div class="projetoBox">
+      <div class="projetoBox">
           <button class="projetoBtn" onclick="reactXp()">+</button>
           <div class="projetoDetails">
               <div class="projetoInfo">
-                  <label for="react">𝕽𝖊𝖆𝖈𝖙</label><span class="infoRight"><p>FCC</p></span>
+                  <label for="react">𝕽𝖊𝖆𝖈𝖙</label><span class="infoRight"><p>code01</p></span>
               </div>
               <meter id="reactMeter" min="0" max="101" low="20" high="60" optimum="90" value="0"></meter>
           </div>
-          <img src="./imagens/reactfcc.png" width="75" height="70"/>
-        </div> -->
+          <img src="./imagens/reactcode01.png" width="75" height="70"/>
+        </div>
      
           <div class="projetoBox">
-          <button class="projetoBtn" onclick="fccXp()">+</button>
+          <button class="projetoBtn" onclick="code01Xp(), codeXp()">+</button>
           <div class="projetoDetails">
               <div class="projetoInfo">
-                <label for="fcc first certification">FCC</label><span class="infoRight"><p id="fccLvl">#1</p></span>
+                <label for="code01 first certification">PostgreSQL</label><span class="infoRight"><p id="code01Lvl">#1</p></span>
               </div>
-            <meter id="fccMeter" min="0" max="5" low="2" high="4" optimum="5" value="0"></meter>
+            <meter id="code01Meter" min="0" max="5" low="2" high="4" optimum="5" value="0"></meter>
           </div>
-          <img src="./imagens/fcc1.png" width="70" height="70"/>
+          <img src="./imagens/code011.png" width="70" height="70"/>
           </div>
       </div>
       
     </div>
   <div class="quadros" id="calcContainer" style="display: none">
     <div class="titleBar">
-      <h2>Calculadora</h2>
-      <button onclick="hideQuadro('calcContainer')">x</button>
-       </div>
+      <h2>Calculadora JS</h2>
+      <button onclick="hideQuadro('calcContainer'), clearDisplay()">x</button>
+    </div>
     
 <div id="calculator">
   <input type="text" id="display" readonly>
   <br>
   <input type="button" value="1" onclick="appendToDisplay('1')">
-  <input type="button" value="2" onclick="appendToDisplay('2')">
+  <input type="button" value="'2'" onclick="appendToDisplay('2')">
   <input type="button" value="3" onclick="appendToDisplay('3')">
-  <input type="button" value="/" onclick="appendToDisplay('/')">
+  <input type="button" value="*" onclick="appendToDisplay('*')">
   <br>
-  <input type="button" value="4" onclick="appendToDisplay('4')">
+  <input type="button" value="'4'" onclick="appendToDisplay('4')">
   <input type="button" value="5" onclick="appendToDisplay('5')">
   <input type="button" value="6" onclick="appendToDisplay('6')">
-  <input type="button" value="-" onclick="appendToDisplay('-')">
+  <input type="button" value="/" onclick="appendToDisplay('/')">
   <br>
   <input type="button" value="7" onclick="appendToDisplay('7')">
-  <input type="button" value="8" onclick="appendToDisplay('8')">
+  <input type="button" value="'8'" onclick="appendToDisplay('8')">
   <input type="button" value="9" onclick="appendToDisplay('9')">
   <input type="button" value="+" onclick="appendToDisplay('+')">
   <br>
-  <input type="button" value="0" onclick="appendToDisplay('0')">
-  <input type="button" value="." onclick="appendToDisplay('.')">
   <input type="button" value="C" onclick="clearDisplay()">
-  <input type="button" value="=" onclick="calculate()">
+  <input type="button" value="0" onclick="appendToDisplay('0')">
+  <input type="button" value="=" onclick="toDisplay('NaN')">
+  <input type="button" value="-" onclick="appendToDisplay('-')">
+  <!-- <input type="button" value="=" onclick="calculate()"-->
 </div>
 
 </div>
@@ -246,15 +264,15 @@
 </section>
     <div id="appMenu" class="quadros">
         <ul>
-            <li onclick="hideQuadro('pomodoro')"><img src="./imagens/tomatoo.png" width="35" height="35">  Pomodoro</li>
-            <li onclick="hideQuadro('todoContainer')"><img src="./imagens/w98_notepad.ico" width="35" height="35"> To Do list</li>
-            <li onclick="hideQuadro('skillsContainer')"><img src="./imagens/w98_accessibility_stopwatch.ico" width="35" height="35">Daily Skills</li>
-            <li onclick="hideQuadro('calendarContainer')"><img src="./imagens/w98_calendar.ico" width="35" height="35"> Calendar</li>
-            <li onclick="hideQuadro('searchWeb')"><img src="imagens/w98_search_web.ico" width="35" height="35"> Search the Web</li>
-            <li onclick="hideQuadro('projetosContainer')"><img src="./imagens/w98_briefcase.ico" width="35" height="35"> Projetos</li>
-            <li onclick="hideQuadro('calcContainer')"><img src="./imagens/w98_calculator.ico" width="35" height="35"> Calculator</li>
-            <li onclick="hideQuadro('wallpContainer')"><img src="./imagens/w98_directory_pictures.ico" width="35" height="35">Wallpaper</li>
-          </ul>
+            <li onclick="hideQuadro('pomodoro'), hideAppMenu(), clickStart()"><img src="./imagens/tomatoo.png" width="35" height="35">  Pomodoro</li>
+            <li onclick="hideQuadro('todoContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_notepad.ico" width="35" height="35"> To Do list</li>
+            <li onclick="hideQuadro('skillsContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_accessibility_stopwatch.ico" width="35" height="35">Daily Skills</li>
+            <li onclick="hideQuadro('calendarContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_calendar.ico" width="35" height="35"> Calendar</li>
+            <li onclick="hideQuadro('searchWeb'), hideAppMenu(), clickStart()"><img src="imagens/w98_search_web.ico" width="35" height="35"> Search the Web</li>
+            <li onclick="hideQuadro('projetosContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_briefcase.ico" width="35" height="35"> Projetos</li>
+            <li onclick="clearDisplay(), hideQuadro('calcContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_calculator.ico" width="35" height="35"> Calculator</li>
+            <li onclick="hideQuadro('wallpContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_directory_pictures.ico" width="35" height="35">Wallpaper</li>
+        </ul>
     </div>
   <script async src="https://cse.google.com/cse.js?cx=c35d5bde231d24650">
   </script>

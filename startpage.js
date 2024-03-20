@@ -1,5 +1,3 @@
-// GLOBAL VARIABLES
-
 document.addEventListener('DOMContentLoaded', generateCalendar());
 
 // GERAR MES ATUAL (TESTE A SER RETIRADO)
@@ -19,16 +17,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const greeting = document.querySelector('h1');
 
     if (!localStorage.getItem('name')) {
-
       const name = prompt("Insira seu nome:");
       localStorage.setItem('name', name);
- 
-     }
-
-
+    }
+    
     const name = localStorage.getItem('name');
-   
-
+  
     if (hour >= 5 && hour < 12) {
       greeting.textContent = `Bom dia, ${name}!`;
     } else if (hour >= 12 && hour < 18) {
@@ -59,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
 
-/*// PAPEL DE PAREDE GERADO DE ACORDO COM O MÊS
+// PAPEL DE PAREDE GERADO DE ACORDO COM O MÊS
 
 document.addEventListener('DOMContentLoaded', function(){
 	const date = new Date();
@@ -83,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function(){
 	const backgroundImage = document.getElementById("bgContainer");
 	backgroundImage.style.backgroundImage = `url("./imagens/wallps/${months[month]}.jpg")`;
 
-}) */
+})
 
 // RELÓGIO
 
@@ -95,7 +89,7 @@ function updateClock() {
 
 	document.getElementById('hours').textContent = ` ${hours}:`;
 	document.getElementById('minutes').textContent = `${minutes}:`;
-	document.getElementById('seconds').textContent= seconds;
+	document.getElementById('seconds').textContent = seconds;
 }
 
 //CALL ONCE TO UPDATE WHEN PAGE LOADS
@@ -152,12 +146,12 @@ document.addEventListener('DOMContentLoaded', function() {
   
 
 
-  function getWeekNumber(date) {
+function getWeekNumber(date) {
 	const startOfYear = new Date(date.getUTCFullYear(), 0, 1);
 	const daysDifference = Math.floor((date - startOfYear) / 86400000);
 	const weekNumber = Math.floor((daysDifference + startOfYear.getUTCDay() + 1) / 7) + 1;
 	return weekNumber;
-  }
+}
   
   
 // TO DO LIST
@@ -169,7 +163,7 @@ function addTask() {
   
     if (task) {
       const li = document.createElement('li');
-      li.appendChild(document.createTextNode(`> ${task} < `));
+      li.appendChild(document.createTextNode(`>  ${task}`));
       
       const deleteButton = document.createElement('button');
       deleteButton.appendChild(document.createTextNode('x'));
@@ -212,7 +206,7 @@ function addTask() {
     }
     tasks.forEach(function(task) {
       const li = document.createElement('li');
-      li.appendChild(document.createTextNode(`>  ${task} < `));
+      li.appendChild(document.createTextNode(`>  ${task}`));
       
       const deleteButton = document.createElement('button');
       deleteButton.appendChild(document.createTextNode('x'));
@@ -225,6 +219,72 @@ function addTask() {
       document.getElementById('taskList').appendChild(li);
     });
   });
+
+// REC LIST
+
+function addRec() {
+  const recInput = document.getElementById('recInput');
+  const recList = document.getElementById('recList');
+  const rec = recInput.value;
+
+  if (rec) {
+    const li = document.createElement('li');
+    li.appendChild(document.createTextNode(`>  ${rec}`));
+    
+    const deleteButton = document.createElement('button');
+    deleteButton.appendChild(document.createTextNode('x'));
+    deleteButton.onclick = function() {
+      recList.removeChild(li);
+      removeRecFromLocalStorage(rec);
+    };
+    
+    li.appendChild(deleteButton);
+    recList.appendChild(li);
+    recInput.value = '';
+
+    saveRecToLocalStorage(rec);
+  }
+}
+
+function saveRecToLocalStorage(rec) {
+  let recs;
+  if (localStorage.getItem('recs') === null) {
+    recs = [];
+  } else {
+    recs = JSON.parse(localStorage.getItem('recs'));
+  }
+  recs.push(rec);
+  localStorage.setItem('recs', JSON.stringify(recs));
+}
+
+function removeRecFromLocalStorage(rec) {
+  let recs = JSON.parse(localStorage.getItem('recs'));
+  recs = recs.filter(item => item !== rec);
+  localStorage.setItem('recs', JSON.stringify(recs));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  let recs;
+  if (localStorage.getItem('recs') === null) {
+    recs = [];
+  } else {
+    recs = JSON.parse(localStorage.getItem('recs'));
+  }
+  recs.forEach(function(rec) {
+    const li = document.createElement('li');
+    li.appendChild(document.createTextNode(`>  ${rec}`));
+    
+    const deleteButton = document.createElement('button');
+    deleteButton.appendChild(document.createTextNode('x'));
+    deleteButton.onclick = function() {
+      recList.removeChild(li);
+      removeRecFromLocalStorage(rec);
+    };
+    
+    li.appendChild(deleteButton);
+    document.getElementById('recList').appendChild(li);
+  });
+});
 
 
 // POMODORO
@@ -283,8 +343,8 @@ updateTimerDisplay(); // Initial display
 // SKILLS AND PROJECTS UP TO DATE ON PAGE LOAD
 document.addEventListener("DOMContentLoaded", function(){
 		
-		const codeMeter = document.getElementById("codeMeter");
-		codeMeter.value = localStorage.getItem("codeCount");
+		const codeGMeter = document.getElementById("codeGMeter");
+		codeMeter.value = localStorage.getItem("codeGCount");
 
 		const physicalMeter = document.getElementById("physicalMeter");
 		physicalMeter.value = localStorage.getItem("physicalCount");
@@ -292,8 +352,8 @@ document.addEventListener("DOMContentLoaded", function(){
 		/*	const reactMeter = document.getElementById('reactMeter');
 		reactMeter.value = localStorage.getItem("reactCount"); */
 
-		const fccMeter = document.getElementById('fccMeter');
-		fccMeter.value = localStorage.getItem("fccCount");
+		const code01Meter = document.getElementById('code01Meter');
+		code01Meter.value = localStorage.getItem("code01Count");
 })
 
 // SKILLS UPDATE BY CLICK ON BUTTONS
@@ -388,19 +448,19 @@ function reactXp() {
 }
 
 
-function fccXp() {
+function code01Xp() {
 
-	if (localStorage.getItem("fccCount") === null || localStorage.getItem("fccCount") === undefined) {
-		let fccCount = 1;
-		localStorage.setItem("fccCount", fccCount);
-		fccMeter.value = fccCount;
+	if (localStorage.getItem("code01Count") === null || localStorage.getItem("code01Count") === undefined) {
+		let code01Count = 1;
+		localStorage.setItem("code01Count", code01Count);
+		code01Meter.value = code01Count;
 	} else {
-		const originalCount = localStorage.getItem("fccCount");
-		const fccMeter = document.getElementById("fccMeter");
-		let fccCount = originalCount;
-		fccCount++;
-		localStorage.setItem("fccCount", fccCount);
-		fccMeter.value = fccCount;
+		const originalCount = localStorage.getItem("code01Count");
+		const code01Meter = document.getElementById("code01Meter");
+		let code01Count = originalCount;
+		code01Count++;
+		localStorage.setItem("code01Count", code01Count);
+		code01Meter.value = code01Count;
 	}
 
 }
@@ -433,18 +493,11 @@ function clickStart() {
   }
 }
 
-/*function hidePomodoro() {
-	const pomodoro = document.getElementById("pomodoro");
-	pomodoro.style.display = (pomodoro.style.display === 'none') ? 'block' : 'none';
-}*/
-
-
 function hideQuadro(idQuadro) {
   const quadro = document.getElementById(`${idQuadro}`);
   quadro.style.display = (quadro.style.display === 'none') ? 'block' : 'none';
 
 }
-
 
 
 
@@ -497,6 +550,7 @@ function generateCalendar() {
           const cell = row.insertCell();
           if (currentDatePointer.getMonth() === currentMonth) {
               cell.textContent = currentDatePointer.getDate();
+              cell.id = `dia${currentDatePointer.getDate()}`;
           }
           currentDatePointer.setDate(currentDatePointer.getDate() + 1);
       }
@@ -510,6 +564,9 @@ function generateCalendar() {
 
 
 // CALCULATOR
+function toDisplay(value) {
+  document.getElementById('display').value = value;
+}
 
 function appendToDisplay(value) {
   document.getElementById('display').value += value;
@@ -549,3 +606,10 @@ function hideAppMenu2() {
 
 	appMenu.style.display = 'none';
 }
+
+const teste = document.getElementById("1");
+teste.style.color='blue';
+
+
+
+  
