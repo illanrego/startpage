@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width">
-    <title>Retro 90's Desktop Startpage</title>
+    <title>illan's hub</title>
     <link rel="stylesheet" href="startpage.css" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400&display=swap">
     <link rel="stylesheet" href="win98.ttf">
@@ -85,6 +85,16 @@
         <input type="text" id="recInput" placeholder="Enter rec">
         <button onclick="addRec()">+</button>
         <ul id="recList"></ul>
+      </div>
+
+      <div id="promptContainer" class="quadros" style="display: block">
+        <div class="titleBar">
+          <h2>GPT Daily Prompt</h2>
+          <button onclick="hideQuadro('promptContainer')">x</button>
+        </div>
+        <ul>
+          <p id="promptDiario"></p>
+        </ul>
       </div>
 
 
