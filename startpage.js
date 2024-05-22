@@ -37,130 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
   );
 
 document.addEventListener('DOMContentLoaded', function() {
-
-  const today = new Date();
-  const options = {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  };
-
-  const hours = today.getHours().toString().padStart(2,'0');
-	const minutes = today.getMinutes().toString().padStart(2,'0');
-   
-  const dayOfYear = today.toLocaleDateString('en-US', options);
-  const promptDiario = document.getElementById('promptDiario');
-
-  const dayofweek = today.getDay;
-
-  promptDiario.textContent = `
-    Hello, my name is Illan, I'm a brazilian webdeveloper, stand up comic and local social media
-    indfluencer in my city - Montes Claros MG Brazil. I was born in 25th june 1989.
-    I live with my 4 cats and my lovely fiance at our apartment.
-
-    Today is ${dayOfYear}, please take note of the day of the week so you can adjust things
-    accordingly.
-    
-    Your name is Navi, you're my personal assistant.
-    
-    workout-table:
-   
-    |-----------------------------------------------------------------|
-    | Day       | Workout        | Exercises                          |
-    |-----------|----------------|------------------------------------|
-    | Monday    | Beta - Back    | - T-Bar Row                        |
-    |           |                | - Lat Pulldown                     |
-    |           |                | - Seated Row                       |
-    |           |                | - Dumbbell Shrug                   |
-    |           |                | - Leg Raises                       |
-    |           | Night Run      | 9:00 PM                            |
-    |-----------|----------------|------------------------------------|
-    | Tuesday   | Alpha - Chest  | - Bench Press with Barbell         |
-    |           |                | - Dip (Inclined)                   |
-    |           |                | - Cable Crossover - Clavicular     |
-    |           |                | - Weighted Declined Crunches       |
-    |           | Night Run      | 9:00 PM                            |
-    |-----------|----------------|------------------------------------|
-    | Wednesday | Boxing Session |                                    |
-    |           | Night Run      | 9:00 PM                            |
-    |-----------|----------------|------------------------------------|
-    | Thursday  | Gamma - Legs   | - Squat                            |
-    |           |                | - Deadlift                         |
-    |           |                | - Leg Extensor (Machine)           |
-    |           |                | - Calf Raises                      |
-    |           |                | - Seated Calf Raises               |
-    |           | Night Run      | 9:00 PM                            |
-    |-----------|----------------|------------------------------------|
-    | Friday    | Boxing Session |                                    |
-    |           | Night Run      | 9:00 PM                            |
-    |-----------|----------------|------------------------------------|
-    | Saturday  | Delta - Arms   | - Bench Press with Barbell         |
-    |           |                | - Barbell Curl                     |
-    |           |                | - Cable Hammer Curl                |
-    |           |                | - Triceps Extensor (Above Head)    |
-    |           |                | - Lateral Raise (Cable Machine)    |
-    |           |                | - Wrist Curl                       |
-    |           | Night Run      | 9:00 PM                            |
-    |-----------|----------------|------------------------------------|
-    | Sunday    | Boxing Session |                                    |
-    |           | Night Run      | 9:00 PM                            |
-    |-----------|----------------|------------------------------------|
-    
-    
-    
-    
-    I like to stick to my routine as possible, but also integrate the specifics chores of the day
-    as we planning in the morning.
-
-    Always format my tasks lists as the following pattern (with the emojis, timestamp and concise descrption)
-    
-    My routine is the following:
-    (the emojis are just examples, you can replace for another that's also related to the task)
-
-
-    TASK LIST:
-
-    🌅 5:00 AM - Wake up and take care of your cats, start the day
-    ☕ 5:30 AM - Podcast, coffee, and a small breakfast
-    🛠️ 7:00 AM - Light work: start the specific today tasks
-    🥰 8:00 AM - quality time with fiance
-    🏋️‍♂️ 9:00 AM - workout of the day [according to the day of the week]
-    🍳 11:00 AM - Cooldown, post-workout breakfastSmall lunch or continue working
-    😴 1:00 PM - Continue with tasks/work
-    🌄 5:00 PM - Chill
-    🏃‍♂️ 7:30 PM - Night run
-    🌌 8:30 PM - Cooldown and prepare for tomorrow
-    😴 9:00 PM - Sleep
-
-
-    right after I tell you this prompt you should greet me and help me plan my day.
-    make your greetings warmth and affectionate but not too long.
-
-    the greetings should include: your name, my name, date, day of the week, hour of day ( = ${hours} ) , 
-    a quote from buddhism, you can include actual sutras - according to the theravada texts used.
-    also give me a brief motivational pep talk of one paragraph (not more - dont say it explicity that you are doing a prep talk).
-    include somethings withing the greeting that shows that you know me
-    a little, both personal and professional stuff.
-
-    everyday I want you to make this list to me right after the greetings part
-    AND ASK WHAT I have of specific chores for the day and suggest me
-    TO DO THESE ON THE at 9am or 3pm
-
-    AFTER I TELL YOU WHAT WE HAVE FOR SPECIFICS ON TODAY YOU SHOULD OUTPUT ME A WHOLE TASKLIST
-
-    just help me in general trhoughtou the day.
-    and also correct big or persistent mistakes in my english. 
-    
-
-    WHEN I SAY IM DONE WITH MY TASKS LETS DO A RECAP OF WHAT I DID FOR THE DAY AND WHAT COULD BE DONE TOMORROW. I'D LIKE TO JOURNALING, SPECIALLY THE PROGRESSED PARTS, HELP ME WITH THAT WHEN ITS TIME.
-
-    `;
-
-});
-
-
-document.addEventListener('DOMContentLoaded', function() {
     const today = new Date();
     const miniGreetings = document.querySelector('h3');
 	
@@ -265,7 +141,7 @@ document.addEventListener('DOMContentLoaded', function() {
     weekGraph.appendChild(table);
     
   });
- */
+*/
 
   
 
@@ -442,7 +318,7 @@ function startTimer(duration, callback) {
             alert(`Timer complete! (${duration} minutes)`);
 
 			if (callback) {
-				callback();
+				 callback();
 			}
         }
     }, 1000);
@@ -456,138 +332,87 @@ function resetTimer() {
 }
 
 function playAlarmSound() {
-    const audio = new Audio('/home/illan/Músicas/coin-pkmn.mp3'); // Replace with your sound file
+    const audio = new Audio('/home/illan/Music/victory1.mp3'); // Replace with your sound file
     audio.play();
 }
 
 updateTimerDisplay(); // Initial display
 
-
-
-// SKILLS AND PROJECTS UP TO DATE ON PAGE LOAD
-document.addEventListener("DOMContentLoaded", function(){
-		
-		const codeGMeter = document.getElementById("codeGMeter");
-		codeMeter.value = localStorage.getItem("codeGCount");
-
-		const physicalMeter = document.getElementById("physicalMeter");
-		physicalMeter.value = localStorage.getItem("physicalCount");
-
-		/*	const reactMeter = document.getElementById('reactMeter');
-		reactMeter.value = localStorage.getItem("reactCount"); */
-
-		const code01Meter = document.getElementById('code01Meter');
-		code01Meter.value = localStorage.getItem("code01Count");
-})
-
-// SKILLS UPDATE BY CLICK ON BUTTONS
-
-
-function codeXp() {
-	startTimer(50, function() {
-		codeUpXp();
-	});
-}
-
-function codeUpXp() {
-
-	if (localStorage.getItem("codeCount") === null || localStorage.getItem("codeCount") === undefined) {
-		let codeCount = 1;
-		localStorage.setItem("codeCount", codeCount);
-		codeMeter.value = codeCount;
-	} else {
-		const originalCount = localStorage.getItem("codeCount");
-		const codeMeter = document.getElementById("codeMeter");
-		let codeCount = originalCount;
-		codeCount++;
-		localStorage.setItem("codeCount", codeCount);
-		codeMeter.value = codeCount;
-	}
-
-}
-
-
-function physicalXp() {
-	startTimer(60, function() {
-		physicalUpXp();
-	})
-}
-
-function physicalUpXp() {
-	if (localStorage.getItem("physicalCount") === null || localStorage.getItem("physicalCount") === undefined) {
-		let physicalCount = 1;
-		localStorage.setItem("physicalCount", physicalCount);
-		physicalMeter.value = physicalCount;
-	} else {
-		const originalCount = localStorage.getItem("physicalCount");
-		const physicalMeter = document.getElementById("physicalMeter");
-		let physicalCount = originalCount;
-		physicalCount++;
-		localStorage.setItem("physicalCount", physicalCount);
-		physicalMeter.value = physicalCount;
-	}
-
-}
-
-
-function socialXp() {
-	startTimer(60, function() {
-		socialUpXp();
-	})
-}
-
-function socialUpXp() {
-	if (localStorage.getItem("socialCount") === null || localStorage.getItem("socialCount") === undefined) {
-		let socialCount = 1;
-		localStorage.setItem("socialCount", socialCount);
-		socialMeter.value = socialCount;
-	} else {
-		const originalCount = localStorage.getItem("socialCount");
-		const socialMeter = document.getElementById("socialMeter");
-		let socialCount = originalCount;
-		socialCount++;
-		localStorage.setItem("socialCount", socialCount);
-		socialMeter.value = socialCount;
-	}
-
-}
-
 // PROJECTS METERS UPDATE
 
-function reactXp() {
+document.addEventListener('DOMContentLoaded', function() {
+	const contentMeter = document.getElementById("contentMeter");
+	contentMeter.value = localStorage.getItem("contentCount");
 
-	if (localStorage.getItem("reactCount") === null || localStorage.getItem("reactCount") === undefined) {
-		let reactCount = 1;
-		localStorage.setItem("reactCount", reactCount);
-		reactMeter.value = reactCount;
+	const codingMeter = document.getElementById("codingMeter");
+	codingMeter.value = localStorage.getItem("codingCount")
+/*
+	const standupMeter = document.getElementById("standupMeter");
+	standupMeter.value = localStorage.getItem("standupCount");
+*/
+	const fitnessMeter = document.getElementById("fitnessMeter");
+	fitnessMeter.value = localStorage.getItem("fitnessCount");
+});
+
+function skillClick(skillUp) {
+	 startTimer(25, function(){
+		skillUp();
+		startTimer(5);
+	 });
+};
+
+
+
+function fitnessXp(){ 
+
+	if (localStorage.getItem("fitnessCount") === null || localStorage.getItem("fitnessCount") === undefined) {
+		let fitnessCount = 1;
+		localStorage.setItem("fitnessCount", fitnessCount);
+	        fitnessMeter.value = fitnessCount;
 	} else {
-		const originalCount = localStorage.getItem("reactCount");
-		const reactMeter = document.getElementById("reactMeter");
-		let reactCount = originalCount;
-		reactCount++;
-		localStorage.setItem("reactCount", reactCount);
-		reactMeter.value = reactCount;
+		const originalCount = localStorage.getItem("fitnessCount");
+		let fitnessCount = originalCount;
+		fitnessCount++;
+		localStorage.setItem("fitnessCount", fitnessCount);
+		fitnessMeter.value = fitnessCount;
 	}
 
-}
+};
 
 
-function code01Xp() {
 
-	if (localStorage.getItem("code01Count") === null || localStorage.getItem("code01Count") === undefined) {
-		let code01Count = 1;
-		localStorage.setItem("code01Count", code01Count);
-		code01Meter.value = code01Count;
+function codingXp(){ 
+
+
+	if (localStorage.getItem("codingCount") === null || localStorage.getItem("codingCount") === undefined) {
+		let codingCount = 1;
+		localStorage.setItem("codingCount", codingCount);
+	        codingMeter.value = codingCount;
 	} else {
-		const originalCount = localStorage.getItem("code01Count");
-		const code01Meter = document.getElementById("code01Meter");
-		let code01Count = originalCount;
-		code01Count++;
-		localStorage.setItem("code01Count", code01Count);
-		code01Meter.value = code01Count;
+		const originalCount = localStorage.getItem("codingCount");
+		let codingCount = originalCount;
+		codingCount++;
+		localStorage.setItem("codingCount", codingCount);
+		codingMeter.value = codingCount;
 	}
 
-}
+};
+
+function contentXp(){ 
+
+	if (localStorage.getItem("contentCount") === null || localStorage.getItem("contentCount") === undefined) {
+		let contentCount = 1;
+		localStorage.setItem("contentCount", contentCount);
+		contentMeter.value = contentCount;
+	} else {
+		const originalCount = localStorage.getItem("contentCount");
+		let contentCount = originalCount;
+		contentCount++;
+		localStorage.setItem("contentCount", contentCount);
+		contentMeter.value = contentCount;
+	}
+
+};
 
 document.addEventListener('DOMContentLoaded', hideAppMenu);
 
@@ -679,7 +504,6 @@ function generateCalendar() {
           currentDatePointer.setDate(currentDatePointer.getDate() + 1);
       }
   }
-
   // Append the table to the calendarContainer div
   const weekGraph = document.getElementById("weekGraph");
   weekGraph.innerHTML = "";
@@ -731,9 +555,27 @@ function hideAppMenu2() {
 	appMenu.style.display = 'none';
 }
 
-const teste = document.getElementById("1");
-teste.style.color='blue';
 
 
 
-  
+ 
+/*DRAFT OF GENERIC FUNCTION FOR UP SKIL
+
+function skillUpXp(skill){ 
+	startTimer(2, function(skill) {
+
+	if (localStorage.getItem(`${skill} + Count`) === null || localStorage.getItem(`${skill} + Count`) === undefined) {
+		let skillCount = 1;
+		localStorage.setItem(`${skill} + Count`, skillCount);
+	        contentMeter.value = skillCount;
+	} else {
+		const originalCount = localStorage.getItem(`${skill} + Count`);
+		let skillCount = originalCount;
+		skillCount++;
+		localStorage.setItem(`${skill} + Count`, skillCount);
+		contentMeter.value = skillCount;
+	}
+});
+
+};
+*/ 

@@ -12,13 +12,12 @@
   <body>
     <div id="bgContainer"  style="background-image: url('./imagens/windowsgreen.png')";>
     <header>
-    
       <div id="greetings">
         <h1>Bom dia, i!</h1>
         <h3></h3>
       </div>
-   
    </header>
+<!--  ICONES AREA DE TRABALHO --> 
    <div class="icon" id="pomodoroIconDiv" onclick="hideQuadro('pomodoro')">
       <img src="./imagens/tomatoo.png" width="60">
       <label>pomodoro</label>
@@ -27,7 +26,6 @@
     <img src="./imagens/w98_notepad.ico" width="60">
     <label>to-do list</label>
  </div>
-
    <div class="icon" id="calendarIconDiv" onclick="clearDisplay(), hideQuadro('calendarContainer')">
      <img src="./imagens/w98_calendar.ico" width="60">
      <label>calendar</label>
@@ -37,37 +35,57 @@
     <img src="./imagens/w98_netshow_notransm.ico" width="60">
     <label>rec list</label>
   </div>
-
+<!-- MAIN FEATURES -->
+<!-- SKILLS --> 
    <section>
-        <div class="quadros" id="skillsContainer" style="display: none">
+        <div class="quadros" id="skillsContainer" style="display: block">
           <div class="titleBar">
         <h2>Skills</h2>
         <button onclick="hideQuadro('skillsContainer')">x</button>
-         </div>
-        
-            <div class="skillBox">
-                <button class="skillBtn" id="codeBtn" onclick="codeXp()">+</button>
+        </div>
+	<div id="charBox">
+		<img src="./imagens/imagens/mage.jpg" width="180"/>
+         <div class="charDetails">
+		<label for"fitMetric">Fitness</label>
+		<meter id="fitMetric" min="0" max="2" low="0" high="2" optimum="2" value="0"></meter>
+		<label for="wealthMetric">Wealth</label>
+		<meter id="wealthMetric" min="0" max="4" low="1" high="3" optimum="4" value="2"></meter>
+	 </div>
+	</div>
+        <div class="skillBox">
+                <button class="skillBtn" id="codeBtn" onclick="skillClick(codingXp)">+</button>
                 <div class="skillDetails">
                     <div class="skillInfo">
-                        <label for="coding">coding</label><span class="infoRight"><p id="codeStrk">streak:0</p></span>
+                        <label for="coding">Coding</label><span class="infoRight"><p id="codeStrk">LVL 1</p></span>
                     </div>
-                    <meter id="codeMeter" min="0" max="50" low="20" high="30" optimum="40" value="1"></meter>
+                    <meter id="codingMeter" min="0" max="2" low="0" high="2" value="0"></meter>
                 </div>
-                <img src="./imagens/keywave.png" width="70" height="70"/>
-            </div>
+                <img src="./imagens/keywave.png" width="70" height="80"/>
+        </div>
             <div class="skillBox">
-              <button class="skillBtn" id="physicalBtn" onclick="physicalXp()">+</button>
+              <button class="skillBtn" id="physicalBtn" onclick="fitnessXp()">+</button>
               <div class="skillDetails">
                   <div class="skillInfo">
-                      <label for="physical education">Physical</label><span class="infoRight"><p id="physicalStrk">streak:0</p></span>
+                      <label for="physical education">Physic</label><span class="infoRight"><p id="physicalStrk">LVL 1</p></span>
                   </div>
-                  <meter id="physicalMeter" min="0" max="50" low="20" high="30" optimum="40" value="1"></meter>
+                  <meter id="fitnessMeter" min="0" max="2" low="0" high="2"  value="0"></meter>
               </div>
-              <img src="./imagens/gym.png" width="70" height="70"/>
+              <img src="./imagens/gym.png" width="70" height="80"/>
           </div>
-        </div>
+	    <div class="skillBox">
+              <button class="skillBtn" id="physicalBtn" onclick="skillClick(contentXp)">+</button>
+              <div class="skillDetails">
+                  <div class="skillInfo">
+                      <label for="physical education">Media</label><span class="infoRight"><p id="physicalStrk">LVL 1</p></span>
+                  </div>
+                  <meter id="contentMeter" min="0" max="2" low="0" high="2"  value="0"></meter>
+              </div>
+              <img src="./imagens/imagens/media.jpg" width="70" height="80"/>
+          </div>
 
-      <div id="todoContainer" class="quadros" style="display: block">
+        </div>
+<!-- TODO-->
+      <div id="todoContainer" class="quadros" style="display: none">
         <div class="titleBar">
           <h2>To-do List</h2>
           <button onclick="hideQuadro('todoContainer')">x</button>
@@ -76,8 +94,8 @@
         <button onclick="addTask()">+</button>
         <ul id="taskList"></ul>
       </div>
-
-      <div id="recContainer" class="quadros" style="display: block">
+<!-- REC LIST -->
+      <div id="recContainer" class="quadros" style="display: none">
         <div class="titleBar">
           <h2>Rec List</h2>
           <button onclick="hideQuadro('recContainer')">x</button>
@@ -86,8 +104,8 @@
         <button onclick="addRec()">+</button>
         <ul id="recList"></ul>
       </div>
-
-      <div id="promptContainer" class="quadros" style="display: block">
+<!-- PROMPT CHATGPT -->
+      <div id="promptContainer" class="quadros" style="display: none">
         <div class="titleBar">
           <h2>GPT Daily Prompt</h2>
           <button onclick="hideQuadro('promptContainer')">x</button>
@@ -96,8 +114,7 @@
           <p id="promptDiario"></p>
         </ul>
       </div>
-
-
+<!-- CALENDARIO -->
       <div class="quadros" id="calendarContainer"  style="display: none">
         <div class="titleBar">
           <h2 id="calendarTitle">Calendário</h2>
@@ -105,21 +122,41 @@
            </div>
         <div id="weekGraph"></div>
       </div>
-      
+   <!--  POMODORO -->
+    <div class="quadros" id="pomodoro"  style="display: block">
+      <div class="titleBar">
+        <h2>Pomodoro</h2>
+        <button onclick="hideQuadro('pomodoro')">x</button>
+         </div>
+        <div id="timer-container">
+          <div class="subSection" id="pomodoroSection">
+          <img src="./imagens/tomato.png" alt="ilustração de tomate"  height="60"/>
+          <div id="timer">25:00</div>
+          </div>
+          <div id="buttons">
+            <button onclick="startTimer(25)">Start</button>
+            <button onclick="startTimer(5)">Short Rest</button>
+            <button onclick="startTimer(20)">Long Rest</button>
+            <button onclick="resetTimer()">Stop</button>
+          </div>
+        </div>
+    </div>
+
     </section>
+<!--  TASKBAR -->
     <div id="linkContainer">
       <button id="startBtn" onclick="hideAppMenu(), clickStart()">
         <img src="./imagens/debianlogo.png"
              width="20" height="25" alt="icone do debian linux">
              Iniciar
       </button>
-
         <div class="barDivider"></div>
         <div class="barDividerFat"></div>
-      
       <div id="linksBar">
-       
-        <a title="chatgpt" href="https://chat.openai.com" target="_blank">
+        <a title="spotify" href="https://open.spotify.com" target="_blank">
+            <img src="./imagens/spotify-logo.png" alt="ícone do spotify" width="30" height="28">
+          </a> 
+        <a title="chatgpt" href="https://chatgpt.com/?oai-dm=1" target="_blank">
             <img src="./imagens/chatgpt.png" alt="ícone do chatgpt" width="30" height="28">
           </a> 
         <a href="https://www.freecodecamp.org/learn" target="_blank">
@@ -140,7 +177,6 @@
         <a href="https://youtube.com" target="_blank">
           <img src="./imagens/yt.png" alt="ícone do youtube" width="30" height="28">
         </a>
-       
         <a href="https://twitter.com" target="_blank">
           <img src="./imagens/twitter.png" alt="ícone do twitter" width="30" height="28">
         </a>
@@ -160,29 +196,10 @@
           <span id="hours"></span><span id="minutes"></span><span id="seconds"></span>
         </div>
       </div>
-      
     </div>
   <section>
-    <div class="quadros" id="pomodoro"  style="display: none">
-      <div class="titleBar">
-        <h2>Pomodoro</h2>
-        <button onclick="hideQuadro('pomodoro')">x</button>
-         </div>
-     
-        <div id="timer-container">
-          <div class="subSection" id="pomodoroSection">
-          
-          <img src="./imagens/tomato.png" alt="ilustração de tomate"  height="60"/>
-          <div id="timer">25:00</div>
-          </div>
-          <div id="buttons">
-            <button onclick="startTimer(25)">Start</button>
-            <button onclick="startTimer(5)">Short Rest</button>
-            <button onclick="startTimer(20)">Long Rest</button>
-            <button onclick="resetTimer()">Stop</button>
-          </div>
-        </div>
-    </div>
+	  <!-- MORE FEATURES -->
+	    <!--  SEARCH WEB -->
     <div class="quadros" id="searchWeb"  style="display: none">
       <div class="titleBar">
         <h2>Search The Web</h2>
@@ -190,46 +207,12 @@
          </div>
       <div class="gcse-search"></div>
     </div>
-
-   <!-- <div class="quadros" id="quoteContainer">
-      
-    </div>  -->
-    <div class="quadros" id="projetosContainer" style="display: none">
-      <div class="titleBar">
-        <h2>Projetos</h2>
-        <button onclick="hideQuadro('projetosContainer')">x</button>
-         </div>
-      <div id="projetosBox">
-      <div class="projetoBox">
-          <button class="projetoBtn" onclick="reactXp()">+</button>
-          <div class="projetoDetails">
-              <div class="projetoInfo">
-                  <label for="react">𝕽𝖊𝖆𝖈𝖙</label><span class="infoRight"><p>code01</p></span>
-              </div>
-              <meter id="reactMeter" min="0" max="101" low="20" high="60" optimum="90" value="0"></meter>
-          </div>
-          <img src="./imagens/reactcode01.png" width="75" height="70"/>
-        </div>
-     
-          <div class="projetoBox">
-          <button class="projetoBtn" onclick="code01Xp(), codeXp()">+</button>
-          <div class="projetoDetails">
-              <div class="projetoInfo">
-                <label for="code01 first certification">PostgreSQL</label><span class="infoRight"><p id="code01Lvl">#1</p></span>
-              </div>
-            <meter id="code01Meter" min="0" max="5" low="2" high="4" optimum="5" value="0"></meter>
-          </div>
-          <img src="./imagens/code011.png" width="70" height="70"/>
-          </div>
-      </div>
-      
-    </div>
+       <!-- CALCULADORA -->
   <div class="quadros" id="calcContainer" style="display: none">
     <div class="titleBar">
       <h2>Calculadora JS</h2>
       <button onclick="hideQuadro('calcContainer'), clearDisplay()">x</button>
     </div>
-    
 <div id="calculator">
   <input type="text" id="display" readonly>
   <br>
@@ -254,7 +237,7 @@
   <input type="button" value="-" onclick="appendToDisplay('-')">
   <!-- <input type="button" value="=" onclick="calculate()"-->
 </div>
-
+<!--  WALLPAPER OPTION -->
 </div>
 <div class="quadros" id="wallpContainer" style="display: none">
   <div class="titleBar">
@@ -270,16 +253,15 @@
       </select>
     </fieldset>
 </div>
-
-</section>
+<!--  START BUTTON MENU -->
+  </section>
     <div id="appMenu" class="quadros">
         <ul>
             <li onclick="hideQuadro('pomodoro'), hideAppMenu(), clickStart()"><img src="./imagens/tomatoo.png" width="35" height="35">  Pomodoro</li>
             <li onclick="hideQuadro('todoContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_notepad.ico" width="35" height="35"> To Do list</li>
-            <li onclick="hideQuadro('skillsContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_accessibility_stopwatch.ico" width="35" height="35">Daily Skills</li>
+            <li onclick="hideQuadro('skillsContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_accessibility_stopwatch.ico" width="35" height="35">Skills</li>
             <li onclick="hideQuadro('calendarContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_calendar.ico" width="35" height="35"> Calendar</li>
             <li onclick="hideQuadro('searchWeb'), hideAppMenu(), clickStart()"><img src="imagens/w98_search_web.ico" width="35" height="35"> Search the Web</li>
-            <li onclick="hideQuadro('projetosContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_briefcase.ico" width="35" height="35"> Projetos</li>
             <li onclick="clearDisplay(), hideQuadro('calcContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_calculator.ico" width="35" height="35"> Calculator</li>
             <li onclick="hideQuadro('wallpContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_directory_pictures.ico" width="35" height="35">Wallpaper</li>
         </ul>
