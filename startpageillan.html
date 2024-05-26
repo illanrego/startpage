@@ -56,9 +56,9 @@
                 <button class="skillBtn" id="codeBtn" onclick="skillClick(codingXp)">+</button>
                 <div class="skillDetails">
                     <div class="skillInfo">
-                        <label for="coding">Coding</label><span class="infoRight"><p id="codeStrk">LVL 1</p></span>
+			    <label for="coding">Coding</label><span class="infoRight"><p id="codeStrk">LVL:4 total:<span id="totalCount">0</span></p></span>
                     </div>
-                    <meter id="codingMeter" min="0" max="2" low="0" high="2" value="0"></meter>
+                    <meter id="codingMeter" min="0" max="15" low="6" high="12" value="0"></meter>
                 </div>
                 <img src="./imagens/keywave.png" width="70" height="80"/>
         </div>
@@ -66,9 +66,9 @@
               <button class="skillBtn" id="physicalBtn" onclick="fitnessXp()">+</button>
               <div class="skillDetails">
                   <div class="skillInfo">
-                      <label for="physical education">Physic</label><span class="infoRight"><p id="physicalStrk">LVL 1</p></span>
+                      <label for="physical education">Physic</label><span class="infoRight"><p id="physicalStrk">LVL:1</p></span>
                   </div>
-                  <meter id="fitnessMeter" min="0" max="2" low="0" high="2"  value="0"></meter>
+                  <meter id="fitnessMeter" min="0" max="1" low="0" high="1" value="0"></meter>
               </div>
               <img src="./imagens/gym.png" width="70" height="80"/>
           </div>
@@ -76,14 +76,38 @@
               <button class="skillBtn" id="physicalBtn" onclick="skillClick(contentXp)">+</button>
               <div class="skillDetails">
                   <div class="skillInfo">
-                      <label for="physical education">Media</label><span class="infoRight"><p id="physicalStrk">LVL 1</p></span>
+                      <label for="physical education">Media</label><span class="infoRight"><p id="physicalStrk">LVL:2</p></span>
                   </div>
-                  <meter id="contentMeter" min="0" max="2" low="0" high="2"  value="0"></meter>
+                  <meter id="contentMeter" min="0" max="3" low="0" high="2"  value="0"></meter>
               </div>
               <img src="./imagens/imagens/media.jpg" width="70" height="80"/>
           </div>
 
         </div>
+<!-- DAILIES -->
+	<div class="quadros" id="dailiesContainer" style="display: block">
+	  <div class="titleBar">
+          <h2>Dailies</h2>
+          <button onclick="hideQuadro('dailiesContainer')">x</button>
+           </div>
+       
+		<div id="tasklistContainer">
+			<ul id="tasklist">
+<li><input type="checkbox" id="task1"><label for="task01">Wake Up, Cats and Coffee</label></li>
+<li><input type="checkbox" id="task2"><label for="task02">Coding own Projects</label></li>
+<li><input type="checkbox" id="task3"><label for="task03">Morning Meditation</label></li>
+<li><input type="checkbox" id="task4"><label for="task04">Coffee with BB</label></li>
+<li title="mon: it, tue: insta, wed: x, thu: insta, fri: x, sat: yt"><input type="checkbox" id="task5"><label for="task05">Content Creation</label></li>
+<li><input type="checkbox" id="task6"><label for="task06">Lunch, chill and nap</label></li>
+<li><input type="checkbox" id="task7"><label for="task07">Dev Studies</label></li>
+<li title="mon: , tue: , wed: , thu: , fri: , sat: "><input type="checkbox" id="task8"><label for="task08">Workout</label></li>
+<li><input type="checkbox" id="task9"><label for="task09">Evening Meditation</label></li>
+<li><input type="checkbox" id="task10"><label for="task10">Run</label></li>
+<li><input type="checkbox" id="task11"><label for="task11">Read</label></li>
+<li><input type="checkbox" id="task12"><label for="task12">Sleep</label></li>
+			</ul>
+		</div>
+	</div>
 <!-- TODO-->
       <div id="todoContainer" class="quadros" style="display: none">
         <div class="titleBar">
@@ -104,16 +128,6 @@
         <button onclick="addRec()">+</button>
         <ul id="recList"></ul>
       </div>
-<!-- PROMPT CHATGPT -->
-      <div id="promptContainer" class="quadros" style="display: none">
-        <div class="titleBar">
-          <h2>GPT Daily Prompt</h2>
-          <button onclick="hideQuadro('promptContainer')">x</button>
-        </div>
-        <ul>
-          <p id="promptDiario"></p>
-        </ul>
-      </div>
 <!-- CALENDARIO -->
       <div class="quadros" id="calendarContainer"  style="display: none">
         <div class="titleBar">
@@ -122,7 +136,7 @@
            </div>
         <div id="weekGraph"></div>
       </div>
-   <!--  POMODORO -->
+<!--  POMODORO -->
     <div class="quadros" id="pomodoro"  style="display: block">
       <div class="titleBar">
         <h2>Pomodoro</h2>
@@ -253,7 +267,7 @@
       </select>
     </fieldset>
 </div>
-<!--  START BUTTON MENU -->
+<!-- START BUTTON MENU -->
   </section>
     <div id="appMenu" class="quadros">
         <ul>
@@ -264,7 +278,9 @@
             <li onclick="hideQuadro('searchWeb'), hideAppMenu(), clickStart()"><img src="imagens/w98_search_web.ico" width="35" height="35"> Search the Web</li>
             <li onclick="clearDisplay(), hideQuadro('calcContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_calculator.ico" width="35" height="35"> Calculator</li>
             <li onclick="hideQuadro('wallpContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_directory_pictures.ico" width="35" height="35">Wallpaper</li>
-        </ul>
+        <li onclick="hideQuadro('dailiesContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_briefcase.ico" width="35" height="35">Dailies</li>
+ 
+	</ul>
     </div>
   <script async src="https://cse.google.com/cse.js?cx=c35d5bde231d24650">
   </script>

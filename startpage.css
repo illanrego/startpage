@@ -312,10 +312,14 @@
     padding-left: 8px;
  }
 
- .charDetails label {
+ .charDetails label
+  {
 	font-size: large;
  }
 
+ #dailiesContainer label {
+ 	font-size: large;
+ }
  #charBox img {
 	margin: 10px auto 10px auto;
 	border: 1px solid black;
@@ -623,6 +627,11 @@ th {
 
 }
 
+#dailiesContainer { 
+  max-width: 350px;
+  height: fit-content;
+  
+}
 
 #taskInput,
 #recInput {
@@ -685,7 +694,11 @@ input[type="text"] {
   font-size: 18px;
 }
 
-
+input[type="checkbox"] {
+	font-size: large;
+	height: 25px;
+	width: 25px;
+}
 
 #appMenu li {
   list-style-type: none;

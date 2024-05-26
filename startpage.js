@@ -352,6 +352,9 @@ document.addEventListener('DOMContentLoaded', function() {
 */
 	const fitnessMeter = document.getElementById("fitnessMeter");
 	fitnessMeter.value = localStorage.getItem("fitnessCount");
+
+	const totalCount = document.getElementById("totalCount");
+	totalCount.textContent = `${codingMeter.value}`;
 });
 
 function skillClick(skillUp) {
@@ -386,14 +389,18 @@ function codingXp(){
 
 	if (localStorage.getItem("codingCount") === null || localStorage.getItem("codingCount") === undefined) {
 		let codingCount = 1;
-		localStorage.setItem("codingCount", codingCount);
+	localStorage.setItem("codingCount", codingCount);
 	        codingMeter.value = codingCount;
+		const xpTotal = document.getElementById("totalCount");
+		xpTotal.textContent = `${codingCount}`;
 	} else {
 		const originalCount = localStorage.getItem("codingCount");
 		let codingCount = originalCount;
 		codingCount++;
 		localStorage.setItem("codingCount", codingCount);
 		codingMeter.value = codingCount;
+		const xpTotal = document.getElementById("totalCount");
+		xpTotal.textContent = `${codingCount}`;
 	}
 
 };
@@ -413,6 +420,42 @@ function contentXp(){
 	}
 
 };
+
+// TASKLIST 
+
+document.addEventListener('DOMContentLoaded', () => {
+
+	const taskcheck1 = document.getElementById('task1');
+	const taskcheck3 = document.getElementById('task3');
+	const taskcheck4 = document.getElementById('task4');
+	const taskcheck5 = document.getElementById('task5');
+	const taskcheck6 = document.getElementById('task6');
+	const taskcheck7 = document.getElementById('task7');	
+	const taskcheck8 = document.getElementById('task8');
+	const taskcheck9 = document.getElementById('task9');
+	const taskcheck10 = document.getElementById('task10');
+	const taskcheck11 = document.getElementById('task11');
+	const taskcheck12 = document.getElementById('task12');
+	
+	let i = 1;
+	if (localStorage.getItem('todaytasks')) {
+		let tasksChecked = JSON.parse(localStorage.getItem('todaytasks'));
+		tasksChecked = tasks.filter(item => item.checked = true);
+		
+	}
+});
+
+
+function loadDailies(tasklist) {
+    let taskslist = JSON.parse(localStorage.getItem('tasklist'));
+     
+
+	tasks = tasks.filter(item => item !== task);
+
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+  }
+  
+
 
 document.addEventListener('DOMContentLoaded', hideAppMenu);
 
