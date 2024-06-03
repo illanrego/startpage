@@ -56,9 +56,9 @@
                 <button class="skillBtn" id="codeBtn" onclick="skillClick(codingXp)">+</button>
                 <div class="skillDetails">
                     <div class="skillInfo">
-			    <label for="coding">Coding</label><span class="infoRight"><p id="codeStrk">LVL:4 total:<span id="totalCount">0</span></p></span>
+			    <label for="coding">Coding</label><span class="infoRight"><p id="codeStrk">lvl:5 total:<span id="totalCount">0</span></p></span>
                     </div>
-                    <meter id="codingMeter" min="0" max="15" low="6" high="12" value="0"></meter>
+                    <meter id="codingMeter" min="0" max="31" low="15" high="23" optimum="30" value="0"></meter>
                 </div>
                 <img src="./imagens/keywave.png" width="70" height="80"/>
         </div>
@@ -66,9 +66,9 @@
               <button class="skillBtn" id="physicalBtn" onclick="fitnessXp()">+</button>
               <div class="skillDetails">
                   <div class="skillInfo">
-                      <label for="physical education">Physic</label><span class="infoRight"><p id="physicalStrk">LVL:1</p></span>
+                      <label for="physical education">Physic</label><span class="infoRight"><p id="physicalStrk">lvl:2</p></span>
                   </div>
-                  <meter id="fitnessMeter" min="0" max="1" low="0" high="1" value="0"></meter>
+                  <meter id="fitnessMeter" min="0" max="3" low="0" high="3" optimum="3" value="0"></meter>
               </div>
               <img src="./imagens/gym.png" width="70" height="80"/>
           </div>
@@ -76,7 +76,7 @@
               <button class="skillBtn" id="physicalBtn" onclick="skillClick(contentXp)">+</button>
               <div class="skillDetails">
                   <div class="skillInfo">
-                      <label for="physical education">Media</label><span class="infoRight"><p id="physicalStrk">LVL:2</p></span>
+                      <label for="physical education">Media</label><span class="infoRight"><p id="physicalStrk">lvl:2</p></span>
                   </div>
                   <meter id="contentMeter" min="0" max="3" low="0" high="2"  value="0"></meter>
               </div>
@@ -90,21 +90,17 @@
           <h2>Dailies</h2>
           <button onclick="hideQuadro('dailiesContainer')">x</button>
            </div>
-       
-		<div id="tasklistContainer">
+      		<div id="tasklistContainer"> 
 			<ul id="tasklist">
 <li><input type="checkbox" id="task1"><label for="task01">Wake Up, Cats and Coffee</label></li>
-<li><input type="checkbox" id="task2"><label for="task02">Coding own Projects</label></li>
 <li><input type="checkbox" id="task3"><label for="task03">Morning Meditation</label></li>
+<li><input type="checkbox" id="task2"><label for="task02">Coding own Projects</label></li>
+<li title="mon: , tue: , wed: , thu: , fri: , sat: "><input type="checkbox" id="task8"><label for="task08">Workout</label></li>
 <li><input type="checkbox" id="task4"><label for="task04">Coffee with BB</label></li>
 <li title="mon: it, tue: insta, wed: x, thu: insta, fri: x, sat: yt"><input type="checkbox" id="task5"><label for="task05">Content Creation</label></li>
 <li><input type="checkbox" id="task6"><label for="task06">Lunch, chill and nap</label></li>
 <li><input type="checkbox" id="task7"><label for="task07">Dev Studies</label></li>
-<li title="mon: , tue: , wed: , thu: , fri: , sat: "><input type="checkbox" id="task8"><label for="task08">Workout</label></li>
-<li><input type="checkbox" id="task9"><label for="task09">Evening Meditation</label></li>
-<li><input type="checkbox" id="task10"><label for="task10">Run</label></li>
 <li><input type="checkbox" id="task11"><label for="task11">Read</label></li>
-<li><input type="checkbox" id="task12"><label for="task12">Sleep</label></li>
 			</ul>
 		</div>
 	</div>
@@ -137,7 +133,7 @@
         <div id="weekGraph"></div>
       </div>
 <!--  POMODORO -->
-    <div class="quadros" id="pomodoro"  style="display: block">
+    <div class="quadros" id="pomodoro"  style="display: none">
       <div class="titleBar">
         <h2>Pomodoro</h2>
         <button onclick="hideQuadro('pomodoro')">x</button>
@@ -213,14 +209,6 @@
     </div>
   <section>
 	  <!-- MORE FEATURES -->
-	    <!--  SEARCH WEB -->
-    <div class="quadros" id="searchWeb"  style="display: none">
-      <div class="titleBar">
-        <h2>Search The Web</h2>
-        <button onclick="hideQuadro('searchWeb')">x</button>
-         </div>
-      <div class="gcse-search"></div>
-    </div>
        <!-- CALCULADORA -->
   <div class="quadros" id="calcContainer" style="display: none">
     <div class="titleBar">

@@ -421,7 +421,7 @@ function contentXp(){
 
 };
 
-// TASKLIST 
+// TASKLIST  - WORK IN PROGRESS WIP
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -455,8 +455,44 @@ function loadDailies(tasklist) {
     localStorage.setItem('tasks', JSON.stringify(tasks));
   }
   
+// DRAGABLE FUNCTION (cp from https://jsfiddle.net/5t3Ju/)
 
+window.onload = function() {
+	draggable('skillsContainer');
+	draggable('pomodoro');
+	draggable('dailiesContainer');
+};
 
+var dragObj = null;
+function draggable(id) {
+		var obj = document.getElementById(id);
+		obj.style.position = 'absolute';
+		obj.onmousedown = function() {
+				dragObj = obj;
+		}
+}
+
+document.onmouseup = function(e){
+		dragObj = null;
+};
+
+document.onmousemove = function(e){
+		var x = e.pageX;
+		var y = e.pageY;
+		
+//disabled text selection to disable unexpected behavior while dragging
+
+		const selection = document.getSelection();
+		selection.empty();
+
+		if(dragObj == null)
+			return;
+		dragObj.style.left = x +"px";
+		dragObj.style.top = y +"px";
+};
+
+// APP MENU (START BUTTON)
+	
 document.addEventListener('DOMContentLoaded', hideAppMenu);
 
 
