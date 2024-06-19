@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else if (hour > 23 || hour < 5 ){
       greeting.textContent = `Boa madrugada, ${name}!`;
     } else {
-	  greeting.textContent = `Bom dia, ${name}!`;
+	  greeting.textContent = `Boa noite, ${name}!`;
     }
   }
   );
@@ -461,6 +461,12 @@ window.onload = function() {
 	draggable('skillsContainer');
 	draggable('pomodoro');
 	draggable('dailiesContainer');
+	draggable('todoContainer');
+	draggable('recContainer');
+	draggable('calendarContainer');
+	draggable('wallpContainer');
+	draggable('calcContainer');
+    draggable('workoutContainer');
 };
 
 var dragObj = null;
