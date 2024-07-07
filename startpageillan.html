@@ -42,53 +42,33 @@
 <!-- MAIN FEATURES -->
 <!-- SKILLS --> 
    <section>
-        <div class="quadros" id="skillsContainer" style="display: block">
+        <div class="quadros" id="skillsContainer" style="display: none">
           <div class="titleBar">
         <h2>Gamify</h2>
         <button onclick="hideQuadro('skillsContainer')">x</button>
         </div>
-<!--	<div id="charBox">
-		<img src="./imagens/imagens/mage.jpg" width="180"/>
-        <div class="charDetails">
-		<label for"fitMetric">Fitness</label>
-		<meter id="fitMetric" min="0" max="2" low="0" high="2" optimum="2" value="0"></meter>
-		<label for="wealthMetric">Wealth</label>
-		<meter id="wealthMetric" min="0" max="5" low="1" high="4" optimum="5" value="2"></meter>
-	    </div> 
-        </div>
--->        <div class="skillBox">
+        <div class="skillBox">
                 <button class="skillBtn" id="codeBtn" onclick="skillClick(codingXp)">+</button>
                 <div class="skillDetails">
                     <div class="skillInfo">
-			    <label for="coding">Coding</label><span class="infoRight"><p id="codeStrk">lvl:5 total:<span id="totalCount">0</span></p></span>
+			    <label for="coding">Coding</label><span class="infoRight"><p>lvl:<span id="lvl1">0</span> total:<span id="totalCount1">0</span></p></span>
                     </div>
                     <meter id="codingMeter" min="0" max="31" low="15" high="23" optimum="30" value="0"></meter>
                 </div>
                 <img src="./imagens/98icons/w98_laptop_infrared_2.ico" width="50" height="55"/>
         </div>
-            <div class="skillBox">
+        <div class="skillBox">
               <button class="skillBtn" id="physicalBtn" onclick="fitnessXp()">+</button>
               <div class="skillDetails">
                   <div class="skillInfo">
-                      <label for="physical education">Physique</label><span class="infoRight"><p id="physicalStrk">lvl:3</p></span>
+		      <label for="physical education">Physique</label><span class="infoRight"><p>lvl:<span id="lvl2">0</span> total:<span id="totalCount2">0</span></p></span>
                   </div>
                   <meter id="fitnessMeter" min="0" max="7" low="2" high="6" value="0"></meter>
               </div>
               <img src="./imagens/98icons/w98_battery.ico" width="50" height="55"/>
           </div>
-	    <div class="skillBox">
-              <button class="skillBtn" id="physicalBtn" onclick="contentXp()">+</button>
-              <div class="skillDetails">
-                  <div class="skillInfo">
-                      <label for="physical education">Media</label><span class="infoRight"><p id="physicalStrk">lvl:2</p></span>
-                  </div>
-                  <meter id="contentMeter" min="0" max="3" low="0" high="2"  value="0"></meter>
-              </div>
-              <img src="./imagens/98icons/w98_camera_vid.ico" width="50" height="55"/>
-          </div>
-
-        </div>
-<!-- DAILIES -->
+	  </div>
+	<!-- DAILIES -->
 	<div class="quadros" id="dailiesContainer" style="display: none">
 	  <div class="titleBar">
           <h2>Dailies</h2>
@@ -99,11 +79,9 @@
 <li><input type="checkbox" id="task1"><label for="task01">Wake Up, Cats and Coffee</label></li>
 <li title="mon: , tue: , wed: , thu: , fri: , sat: "><input type="checkbox" id="task8"><label for="task08">Workout</label></li>
 <li><input type="checkbox" id="task4"><label for="task04">Coffee with BB</label></li>
-<li><input type="checkbox" id="task10"><label for="task10">Dishes</label></li>
-<li><input type="checkbox" id="task2"><label for="task02">Coding own Projects</label></li>
+<li title="mon: it, tue: insta, wed: x, thu: insta, fri: x, sat: yt"><input type="checkbox" id="task5"><label for="task05">Content Creation</label></li>
 <li><input type="checkbox" id="task6"><label for="task06">Lunch, chill and nap</label></li>
 <li><input type="checkbox" id="task7"><label for="task07">Dev Studies</label></li>
-<li title="mon: it, tue: insta, wed: x, thu: insta, fri: x, sat: yt"><input type="checkbox" id="task5"><label for="task05">Content Creation</label></li>
 <li><input type="checkbox" id="task3"><label for="task03">Meditation</label></li>
 <li><input type="checkbox" id="task11"><label for="task11">Read</label></li>
 			</ul>
@@ -114,7 +92,7 @@
         <div class="titleBar">
           <h2>To-do List</h2>
           <button onclick="hideQuadro('todoContainer')">x</button>
-           </div>
+        </div>
         <input type="text" id="taskInput" placeholder="Enter task">
         <button onclick="addTask()">+</button>
         <ul id="taskList"></ul>
@@ -149,39 +127,39 @@
                 <th>Domingo</th>
             </tr>
             <tr>
-                <td>T-Bar</td>
                 <td>Bench Press</td>
+                <td>T-Bar</td>
                 <td>x</td>
-                <td>T-Bar</td>
-                <td>Calf Raise</td>
                 <td>Bench Press</td>
+                <td>Squat</td>
+                <td>Biceps Curl</td>
                 <td>x</td>
             </tr>
             <tr>
-                <td>Biceps Curl</td>
                 <td>Dip</td>
-                <td>x</td>
                 <td>Lat Pulldown</td>
-                <td>Squat</td>
+                <td>x</td>
                 <td>Dip</td>
-                <td>x</td>
-           </tr>
-           <tr>
-                <td>Lat Pulldown</td>
-                <td>Triceps Ext.</td>
-                <td>x</td>
-                <td>Un. Seated Row</td>
                 <td>Deadlift</td>
+                <td>Hammer Curl</td>
+                <td>x</td>
+           </tr>
+           <tr>
+                <td>Overhead Press</td>
+                <td>Seated Row</td>
+                <td>x</td>
+                <td>Triceps Extension</td>
+                <td>Calf Raise</td>
                 <td>Lateral Raises</td>
                 <td>x</td>
            </tr>
            <tr>
-                <td>Hammer Curl</td>
-                <td>Lateral Raises</td>
+                <td>-</td>
+                <td>Dumbell Shrugs</td>
                 <td>x</td>
                 <td>-</td>
-                <td>Quadriceps Ext.</td>
-                <td>-</td>
+                <td>Quad Extension</td>
+                <td>Wrist Curl</td>
                 <td>x</td>
           </tr>
         </table>
@@ -215,6 +193,15 @@
         </div>
     </div>
 
+  <div class="quadros" id="nextFeatures" style="display: none">
+    <div class="titleBar">
+     <h2>Next Features</h2>
+     <button onclick="hideQuadro('nextFeatures')">x</button>
+    </div>
+	<input type="text" id="featureInput" placeholder="Enter Feature">
+        <button onclick="addFeature()">+</button>
+        <ul id="featureList"></ul>
+  </div>
     </section>
 <!--  TASKBAR -->
     <div id="linkContainer">
@@ -316,6 +303,18 @@
         <option value="0">XP</option>
         <option value="1">98</option>
         <option value="2">Clouds</option>
+	<option value="3">Janeiro</option>
+	<option value="4">Fevereiro</option>
+	<option value="5">Março</option>
+	<option value="6">Abril</option>
+	<option value="7">Maio</option>
+	<option value="8">Junho</option>
+	<option value="9">Julho</option>
+	<option value="10">Agosto</option>
+	<option value="11">Setembro</option>
+	<option value="12">Outubro</option>
+	<option value="13">Novembro</option>
+	<option value="14">Dezembro</option>
       </select>
     </fieldset>
 </div>
@@ -326,12 +325,14 @@
             <li onclick="hideQuadro('recContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_netshow_notransm.ico" width="35" height="35">Rec List</li>
             <li onclick="hideQuadro('workoutContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_battery_alt.ico" width="35" height="35">Workout</li>
             <li onclick="hideQuadro('pomodoro'), hideAppMenu(), clickStart()"><img src="./imagens/tomatoo.png" width="35" height="35">  Pomodoro</li>
-            <li onclick="hideQuadro('todoContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_message_tack.ico" width="35" height="35"> To Do list</li>
+            <li onclick="hideQuadro('todoContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_message_tack.ico" width="35" height="35">To Do list</li>
             <li onclick="hideQuadro('skillsContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_joystick.ico" width="35" height="35">Gamify</li>
             <li onclick="hideQuadro('calendarContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_calendar.ico" width="35" height="35"> Calendar</li>
             <li onclick="clearDisplay(), hideQuadro('calcContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_calculator.ico" width="35" height="35"> Calculator</li>
             <li onclick="hideQuadro('wallpContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_directory_pictures.ico" width="35" height="35">Wallpaper</li>
             <li onclick="hideQuadro('dailiesContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_wia_img_check.ico" width="35" height="35">Dailies</li>
+	    <li onclick="hideQuadro('nextFeatures'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_tools_gear.ico" width="35" height="35">Next Features</li>
+	
 	</ul>
     </div>
   </body>

@@ -286,6 +286,73 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
+// NEXT FEATURES
+
+function addFeature() {
+  const featureInput = document.getElementById('featureInput');
+  const featureList = document.getElementById('featureList');
+  const feature = featureInput.value;
+
+  if (feature) {
+    const li = document.createElement('li');
+    li.appendChild(document.createTextNode(`>  ${feature}`));
+    
+    const deleteButton = document.createElement('button');
+    deleteButton.appendChild(document.createTextNode('x'));
+    deleteButton.onclick = function() {
+      featureList.removeChild(li);
+      removeFeatureFromLocalStorage(feature);
+    };
+    
+    li.appendChild(deleteButton);
+    featureList.appendChild(li);
+    featureInput.value = '';
+
+    saveFeatureToLocalStorage(feature);
+  }
+}
+
+function saveFeatureToLocalStorage(feature) {
+  let features;
+  if (localStorage.getItem('features') === null) {
+    features = [];
+  } else {
+    features = JSON.parse(localStorage.getItem('features'));
+  }
+  features.push(feature);
+  localStorage.setItem('features', JSON.stringify(features));
+}
+
+function removeFeatureFromLocalStorage(feature) {
+  let features = JSON.parse(localStorage.getItem('features'));
+  features = features.filter(item => item !== feature);
+  localStorage.setItem('features', JSON.stringify(features));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  let features;
+  if (localStorage.getItem('features') === null) {
+    features = [];
+  } else {
+    features = JSON.parse(localStorage.getItem('features'));
+  }
+  features.forEach(function(feature) {
+    const li = document.createElement('li');
+    li.appendChild(document.createTextNode(`>  ${feature}`));
+    
+    const deleteButton = document.createElement('button');
+    deleteButton.appendChild(document.createTextNode('x'));
+    deleteButton.onclick = function() {
+      featureList.removeChild(li);
+      removeFeatureFromLocalStorage(feature);
+    };
+    
+    li.appendChild(deleteButton);
+    document.getElementById('featureList').appendChild(li);
+  });
+});
+
+
 
 // POMODORO
 
@@ -341,20 +408,54 @@ updateTimerDisplay(); // Initial display
 // PROJECTS METERS UPDATE
 
 document.addEventListener('DOMContentLoaded', function() {
-	const contentMeter = document.getElementById("contentMeter");
-	contentMeter.value = localStorage.getItem("contentCount");
 
 	const codingMeter = document.getElementById("codingMeter");
-	codingMeter.value = localStorage.getItem("codingCount")
-/*
-	const standupMeter = document.getElementById("standupMeter");
-	standupMeter.value = localStorage.getItem("standupCount");
-*/
+	const codingCount = codingMeter.value = localStorage.getItem("codingCount")
+	
 	const fitnessMeter = document.getElementById("fitnessMeter");
-	fitnessMeter.value = localStorage.getItem("fitnessCount");
+	const fitCount = fitnessMeter.value = localStorage.getItem("fitnessCount");
+	
+	const totalCount1 = document.getElementById("totalCount1");
+	totalCount1.textContent = codingCount;
+	
+	const totalCount2 = document.getElementById("totalCount2");
+	totalCount2.textContent = fitCount;
+	
+	const lvlCount1 = document.getElementById('lvl1');
+	lvl1.textContent = getLevel(codingCount);
 
-	const totalCount = document.getElementById("totalCount");
-	totalCount.textContent = `${codingMeter.value}`;
+	const lvlCount2 = document.getElementById('lvl2');
+	lvl2.textContent = getLevel(fitCount);
+	
+	codingMeter.max = getLevelMax(codingCount);
+	fitnessMeter.max = getLevelMax(fitCount);
+
+function getLevel(skillCount) {
+    
+    // Define the thresholds for each level
+    const thresholds = [3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047];
+    // Loop through the thresholds to find the appropriate level
+    for (let level = 0; level < thresholds.length; level++) {
+        if (skillCount <= thresholds[level]) {
+            return level + 2;
+        }
+    }
+    
+    // If skillCount exceeds the last threshold, return the maximum level 10
+    return 10;
+};
+
+function getLevelMax(skillCount) {
+
+    // Define the thresholds for each level
+    const thresholds = [3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047];
+   for (let level = 0; level < thresholds.length; level++) {
+       if (skillCount <= thresholds[level]) {
+	   return thresholds[level];
+	}		 
+   }
+};
+
 });
 
 function skillClick(skillUp) {
@@ -420,7 +521,7 @@ function contentXp(){
 	}
 
 };
-
+/*
 // TASKLIST  - WORK IN PROGRESS WIP
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -454,8 +555,8 @@ function loadDailies(tasklist) {
 
     localStorage.setItem('tasks', JSON.stringify(tasks));
   }
-  
-// DRAGABLE FUNCTION (cp from https://jsfiddle.net/5t3Ju/)
+ */ 
+// DRAGABLE FUNCTION (cp from https://jsfiddle.net/4t3Ju/)
 
 window.onload = function() {
 	draggable('skillsContainer');
@@ -466,7 +567,8 @@ window.onload = function() {
 	draggable('calendarContainer');
 	draggable('wallpContainer');
 	draggable('calcContainer');
-    draggable('workoutContainer');
+        draggable('workoutContainer');
+	draggable('nextFeatures');
 };
 
 var dragObj = null;
@@ -624,12 +726,24 @@ wallp.addEventListener('change', () => {
   const wallpsPairs = {
     '0': 'windowsgreen',
     '1': '98color',
-    '2': 'clouds'
+    '2': 'clouds',
+    '3': 'janeiro',
+    '4': 'fevereiro',
+    '5': 'marco',
+    '6': 'abril',
+    '7': 'maio',
+    '8': 'junho',
+    '9': 'julho',
+    '10': 'agosto',
+    '11': 'setembro',
+    '12': 'outubro',
+    '13': 'novembro',
+    '14': 'dezembro'
   };
 
   const chosenWallp = wallp.value;
   const backgroundImage = document.getElementById("bgContainer");
-	backgroundImage.style.backgroundImage = `url("./imagens/${wallpsPairs[chosenWallp]}.png")`;
+	backgroundImage.style.backgroundImage = `url("./imagens/${wallpsPairs[chosenWallp]}.jpg")`;
 
 
 });
