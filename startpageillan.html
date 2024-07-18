@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>illan's hub</title>
+    <link rel="stylesheet" href="startpage.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400&display=swap">
+    <link rel="stylesheet" href="win98.ttf">
+    <script src="startpage.js" defer></script>
+  </head>
+  <body>
+    <div id="bgContainer"  style="background-image: url('./imagens/windowsgreen.png')";>
+    <header>
+      <div id="greetings">
+        <h1>Bom dia, i!</h1>
+        <h3></h3>
+      </div>
+   </header>
+<!--  ICONES AREA DE TRABALHO --> 
+ <div class="icon" id="pomodoroIconDiv" onclick="hideQuadro('skillsContainer')">
+      <img src="./imagens/98icons/w98_joystick.ico" width="60">
+      <label>Gamify</label>
+ </div>
+ <div class="icon" id="todoIconDiv" onclick="hideQuadro('dailiesContainer')">
+    <img src="./imagens/98icons/w98_wia_img_check.ico"  width="60">
+    <label>Dailies</label>
+ </div>
+ <div class="icon" id="calendarIconDiv" onclick="clearDisplay(), hideQuadro('calendarContainer')">
+     <img src="./imagens/w98_calendar.ico" width="60">
+     <label>calendar</label>
+ </div>
+ <div class="icon" id="recIconDiv" onclick="hideQuadro('recContainer')">
+    <img src="./imagens/w98_netshow_notransm.ico" width="60">
+    <label>rec list</label>
+ </div>
+ <div class="icon" id="workoutIconDiv" onclick="hideQuadro('workoutContainer')">
+    <img src="./imagens/98icons/w98_battery.ico" width="60">
+    <label>workout</label>
+ </div>
+
+<!-- MAIN FEATURES -->
+<!-- SKILLS --> 
+   <section>
+        <div class="quadros" id="skillsContainer" style="display: none">
+          <div class="titleBar">
+        <h2>Gamify</h2>
+        <button onclick="hideQuadro('skillsContainer')">x</button>
+        </div>
+        <div class="skillBox">
+                <button class="skillBtn" id="codeBtn" onclick="skillClick(codingXp)">+</button>
+                <div class="skillDetails">
+                    <div class="skillInfo">
+			    <label for="coding">Coding</label><span class="infoRight"><p>lvl:<span id="lvl1">0</span> total:<span id="totalCount1">0</span></p></span>
+                    </div>
+                    <meter id="codingMeter" min="0" max="31" low="15" high="23" optimum="30" value="0"></meter>
+                </div>
+                <img src="./imagens/98icons/w98_laptop_infrared_2.ico" width="50" height="55"/>
+        </div>
+        <div class="skillBox">
+              <button class="skillBtn" id="physicalBtn" onclick="fitnessXp()">+</button>
+              <div class="skillDetails">
+                  <div class="skillInfo">
+		      <label for="physical education">Physique</label><span class="infoRight"><p>lvl:<span id="lvl2">0</span> total:<span id="totalCount2">0</span></p></span>
+                  </div>
+                  <meter id="fitnessMeter" min="0" max="7" low="2" high="6" value="0"></meter>
+              </div>
+              <img src="./imagens/98icons/w98_battery.ico" width="50" height="55"/>
+          </div>
+	  </div>
+	<!-- DAILIES -->
+	<div class="quadros" id="dailiesContainer" style="display: none">
+	  <div class="titleBar">
+          <h2>Dailies</h2>
+          <button onclick="hideQuadro('dailiesContainer')">x</button>
+           </div>
+      		<div id="tasklistContainer"> 
+			<ul id="tasklist">
+<li><input type="checkbox" id="task1"><label for="task01">Wake Up, Cats and Coffee</label></li>
+<li title="mon: , tue: , wed: , thu: , fri: , sat: "><input type="checkbox" id="task8"><label for="task08">Workout</label></li>
+<li><input type="checkbox" id="task4"><label for="task04">Coffee</label></li>
+<li title="mon: it, tue: insta, wed: x, thu: insta, fri: x, sat: yt"><input type="checkbox" id="task5"><label for="task05">Content Creation</label></li>
+<li><input type="checkbox" id="task6"><label for="task06">Lunch, chill and nap</label></li>
+<li><input type="checkbox" id="task7"><label for="task07">Dev Studies</label></li>
+<li><input type="checkbox" id="task3"><label for="task03">Meditation</label></li>
+<li><input type="checkbox" id="task11"><label for="task11">Read</label></li>
+			</ul>
+		</div>
+	</div>
+<!-- TODO-->
+      <div id="todoContainer" class="quadros" style="display: none">
+        <div class="titleBar">
+          <h2>To-do List</h2>
+          <button onclick="hideQuadro('todoContainer')">x</button>
+        </div>
+        <input type="text" id="taskInput" placeholder="Enter task">
+        <button onclick="addTask()">+</button>
+        <ul id="taskList"></ul>
+      </div>
+<!-- REC LIST -->
+      <div id="recContainer" class="quadros" style="display: none">
+        <div class="titleBar">
+          <h2>Rec List</h2>
+          <button onclick="hideQuadro('recContainer')">x</button>
+           </div>
+       <div id="addRecContainer">
+        <input type="text" id="recInput" placeholder="Enter rec">
+        <button onclick="addRec()">+</button>
+      </div>
+        <ul id="recList"></ul>
+      </div>
+<!-- WORKOUT -->
+    <div id="workoutContainer" class="quadros" style="display: none">
+      <div class="titleBar">
+      <h2>Workout - Junho</h2>
+      <button onclick="hideQuadro('workoutContainer')">x</button>
+     </div>
+     <div id="workoutTableDiv">
+        <table>
+            <tr>
+                <th>Segunda</th>
+                <th>Terça</th>
+                <th>Quarta</th>
+                <th>Quinta</th>
+                <th>Sexta</th>
+                <th>Sábado</th>
+                <th>Domingo</th>
+            </tr>
+            <tr>
+                <td>Bench Press</td>
+                <td>T-Bar</td>
+                <td>Run</td>
+                <td>Bench Press</td>
+                <td>Squat</td>
+                <td>Biceps Curl</td>
+                <td>Run</td>
+            </tr>
+            <tr>
+                <td>Dip</td>
+                <td>Lat Pulldown</td>
+                <td>x</td>
+                <td>Dip</td>
+                <td>Deadlift</td>
+                <td>Hammer Curl</td>
+                <td>x</td>
+           </tr>
+           <tr>
+                <td>Triceps Extension</td>
+                <td>Seated Row</td>
+                <td>x</td>
+                <td>Overhead Press</td>
+                <td>Calf Raise</td>
+                <td>Lateral Raises</td>
+                <td>x</td>
+           </tr>
+           <tr>
+                <td>-</td>
+                <td>Dumbell Shrugs</td>
+                <td>x</td>
+                <td>-</td>
+                <td>Quad Extension</td>
+                <td>Wrist Curl</td>
+                <td>x</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+<!-- CALENDARIO -->
+      <div class="quadros" id="calendarContainer"  style="display: none">
+        <div class="titleBar">
+          <h2 id="calendarTitle">Calendário</h2>
+          <button onclick="hideQuadro('calendarContainer')">x</button>
+           </div>
+        <div id="weekGraph"></div>
+      </div>
+<!--  POMODORO -->
+    <div class="quadros" id="pomodoro"  style="display: none">
+      <div class="titleBar">
+        <h2>Pomodoro</h2>
+        <button onclick="hideQuadro('pomodoro')">x</button>
+         </div>
+        <div id="timer-container">
+          <div class="subSection" id="pomodoroSection">
+          <img src="./imagens/tomato.png" alt="ilustração de tomate"  height="60"/>
+          <div id="timer">25:00</div>
+          </div>
+          <div id="buttons">
+            <button onclick="startTimer(25)">Start</button>
+            <button onclick="startTimer(5)">Short Rest</button>
+            <button onclick="startTimer(20)">Long Rest</button>
+            <button onclick="resetTimer()">Stop</button>
+          </div>
+        </div>
+    </div>
+
+  <div class="quadros" id="nextFeatures" style="display: none">
+    <div class="titleBar">
+     <h2>Next Features</h2>
+     <button onclick="hideQuadro('nextFeatures')">x</button>
+    </div>
+	<input type="text" id="featureInput" placeholder="Enter Feature">
+        <button onclick="addFeature()">+</button>
+        <ul id="featureList"></ul>
+  </div>
+    </section>
+<!--  TASKBAR -->
+    <div id="linkContainer">
+      <button id="startBtn" onclick="hideAppMenu(), clickStart()">
+        <img src="./imagens/debianlogo.png"
+             width="20" height="25" alt="icone do debian linux">
+             Iniciar
+      </button>
+        <div class="barDivider"></div>
+        <div class="barDividerFat"></div>
+      <div id="linksBar">
+        <a title="spotify" href="https://open.spotify.com" target="_blank">
+            <img src="./imagens/spotify-logo.png" alt="ícone do spotify" width="30" height="28">
+          </a> 
+        <a title="chatgpt" href="https://chatgpt.com/?oai-dm=1" target="_blank">
+            <img src="./imagens/chatgpt.png" alt="ícone do chatgpt" width="30" height="28">
+          </a> 
+        <a href="https://web.whatsapp.com/" target="_blank">
+          <img src="./imagens/wpp.png" alt="ícone do whatsapp" width="30" height="28">
+        </a> 
+         <a title="wikipedia" href="https://en.wikipedia.org" target="_blank">
+            <img src="./imagens/wikipedia.png" alt="ícone do wikipedia" width="30" height="28">
+        </a>
+	<a title="dhammapada" href="https://www.tipitaka.net/tipitaka/dhp" target="_blank">
+            <img src="./imagens/buddha.png" alt="ícone buda" width="30" height="28">
+          </a> 
+        <a href="https://www.freecodecamp.org/learn" target="_blank">
+          <img src="./imagens/fcc2.png" alt="ícone do free code camp" width="30" height="28">
+        </a>
+        <a href="https://developer.mozilla.org/en-US/docs/Learn/Tools_and_testing/Client-side_JavaScript_frameworks/React_interactivity_events_state" target="_blank">
+          <img src="./imagens/mdn1.png" alt="ícone do MDN" width="30" height="28">
+        </a>
+        <a href="https://github.com" target="_blank">
+          <img src="./imagens/github.png" alt="ícone do git" width="30" height="28">
+        </a>
+        <a href="https://www.reddit.com/r/Frontend//" target="_blank">
+          <img src="./imagens/reddit.png" alt="ícone do reddit" width="30" height="28">
+        </a>
+        <a href="https://youtube.com" target="_blank">
+          <img src="./imagens/yt.png" alt="ícone do youtube" width="30" height="28">
+        </a>
+        <a href="https://twitter.com" target="_blank">
+          <img src="./imagens/twitter.png" alt="ícone do twitter" width="30" height="28">
+        </a>
+        <a href="https://thepiratebay.org/index.html" target="_blank">
+          <img src="./imagens/tpb.png" alt="icone do pirate bay" width="30" height="28">
+        </a>
+        <a href="https://opensubtitles.org" target="_blank">
+          <img src="./imagens/opensub.png" alt="icone do opensubtitles" width="33" height="28">
+        </a>
+        <a href="https://apod.nasa.gov/apod/astropix.html" target="_blank">
+          <img src="./imagens/nasa.jpg" alt="icone da nasa" width="30" height="28">
+        </a>
+        <div class="clock">
+          <span id="hours"></span><span id="minutes"></span><span id="seconds"></span>
+        </div>
+      </div>
+    </div>
+  <section>
+	  <!-- MORE FEATURES -->
+       <!-- CALCULADORA -->
+  <div class="quadros" id="calcContainer" style="display: none">
+    <div class="titleBar">
+      <h2>Calculadora JS</h2>
+      <button onclick="hideQuadro('calcContainer'), clearDisplay()">x</button>
+    </div>
+<div id="calculator">
+  <input type="text" id="display" readonly>
+  <br>
+  <input type="button" value="1" onclick="appendToDisplay('1')">
+  <input type="button" value="'2'" onclick="appendToDisplay('2')">
+  <input type="button" value="3" onclick="appendToDisplay('3')">
+  <input type="button" value="*" onclick="appendToDisplay('*')">
+  <br>
+  <input type="button" value="'4'" onclick="appendToDisplay('4')">
+  <input type="button" value="5" onclick="appendToDisplay('5')">
+  <input type="button" value="6" onclick="appendToDisplay('6')">
+  <input type="button" value="/" onclick="appendToDisplay('/')">
+  <br>
+  <input type="button" value="7" onclick="appendToDisplay('7')">
+  <input type="button" value="'8'" onclick="appendToDisplay('8')">
+  <input type="button" value="9" onclick="appendToDisplay('9')">
+  <input type="button" value="+" onclick="appendToDisplay('+')">
+  <br>
+  <input type="button" value="C" onclick="clearDisplay()">
+  <input type="button" value="0" onclick="appendToDisplay('0')">
+  <input type="button" value="=" onclick="toDisplay('NaN')">
+  <input type="button" value="-" onclick="appendToDisplay('-')">
+  <!-- <input type="button" value="=" onclick="calculate()"-->
+</div>
+</div>
+<!--  WALLPAPER OPTION -->
+<div class="quadros" id="wallpContainer" style="display: none">
+  <div class="titleBar">
+    <h2>Papel de Parede</h2>
+    <button onclick="hideQuadro('wallpContainer')">x</button>
+     </div>
+  <fieldset>
+    <legend>Selecione um Papel de Parede</legend>
+      <select id="selectWallp">
+        <option value="0">XP</option>
+        <option value="1">98</option>
+        <option value="2">Clouds</option>
+	<option value="3">Janeiro</option>
+	<option value="4">Fevereiro</option>
+	<option value="5">Março</option>
+	<option value="6">Abril</option>
+	<option value="7">Maio</option>
+	<option value="8">Junho</option>
+	<option value="9">Julho</option>
+	<option value="10">Agosto</option>
+	<option value="11">Setembro</option>
+	<option value="12">Outubro</option>
+	<option value="13">Novembro</option>
+	<option value="14">Dezembro</option>
+      </select>
+    </fieldset>
+    <button onclick="removeWallp()">Restaurar Padrão</button>
+</div>
+<!-- START BUTTON MENU -->
+  </section>
+    <div id="appMenu" class="quadros">
+        <ul>
+            <li onclick="hideQuadro('recContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_netshow_notransm.ico" width="35" height="35">Rec List</li>
+            <li onclick="hideQuadro('workoutContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_battery_alt.ico" width="35" height="35">Workout</li>
+            <li onclick="hideQuadro('pomodoro'), hideAppMenu(), clickStart()"><img src="./imagens/tomatoo.png" width="35" height="35">  Pomodoro</li>
+            <li onclick="hideQuadro('todoContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_message_tack.ico" width="35" height="35">To Do list</li>
+            <li onclick="hideQuadro('skillsContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_joystick.ico" width="35" height="35">Gamify</li>
+            <li onclick="hideQuadro('calendarContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_calendar.ico" width="35" height="35"> Calendar</li>
+            <li onclick="clearDisplay(), hideQuadro('calcContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_calculator.ico" width="35" height="35"> Calculator</li>
+            <li onclick="hideQuadro('wallpContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_directory_pictures.ico" width="35" height="35">Wallpaper</li>
+            <li onclick="hideQuadro('dailiesContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_wia_img_check.ico" width="35" height="35">Dailies</li>
+	    <li onclick="hideQuadro('nextFeatures'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_tools_gear.ico" width="35" height="35">Next Features</li>
+	
+	</ul>
+    </div>
+  </body>
+</html>

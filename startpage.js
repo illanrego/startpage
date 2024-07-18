@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', generateCalendar());
 
-// GERAR MES ATUAL (TESTE A SER RETIRADO)
+// GERAR MES ATUAL
 
 document.addEventListener('DOMContentLoaded', function() {
     const date = new Date();
@@ -56,6 +56,8 @@ document.addEventListener('DOMContentLoaded', function() {
 // PAPEL DE PAREDE GERADO DE ACORDO COM O MÊS
 
 document.addEventListener('DOMContentLoaded', function(){
+	if (!localStorage.getItem('wallp')) {	
+
 	const date = new Date();
 	const month = date.getMonth();
 	
@@ -76,8 +78,15 @@ document.addEventListener('DOMContentLoaded', function(){
 
 	const backgroundImage = document.getElementById("bgContainer");
 	backgroundImage.style.backgroundImage = `url("./imagens/wallps/${months[month]}.jpg")`;
+	} else { 
+	const backgroundImage = document.getElementById("bgContainer");
+	backgroundImage.style.backgroundImage = localStorage.getItem('wallp')}
+});
 
-})
+function removeWallp() {
+	localStorage.removeItem('wallp');
+};
+
 
 // RELÓGIO
 
@@ -743,8 +752,9 @@ wallp.addEventListener('change', () => {
 
   const chosenWallp = wallp.value;
   const backgroundImage = document.getElementById("bgContainer");
-	backgroundImage.style.backgroundImage = `url("./imagens/${wallpsPairs[chosenWallp]}.jpg")`;
+  const wallpSelected = backgroundImage.style.backgroundImage = `url("./imagens/${wallpsPairs[chosenWallp]}.jpg")`;
 
+  localStorage.setItem('wallp', wallpSelected);
 
 });
 
