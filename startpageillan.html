@@ -48,43 +48,55 @@
         <button onclick="hideQuadro('skillsContainer')">x</button>
         </div>
         <div class="skillBox">
-                <button class="skillBtn" id="codeBtn" onclick="skillClick(codingXp)">+</button>
+                <button class="skillBtn" id="codingBtn">+</button>
                 <div class="skillDetails">
                     <div class="skillInfo">
-			    <label for="coding">Coding</label><span class="infoRight"><p>lvl:<span id="lvl1">0</span> total:<span id="totalCount1">0</span></p></span>
+			    <label for="coding">Coding</label><span class="infoRight"><p>lvl:<span id="lvl1">0</span> total:<span id="codingTotalCount">0</span>
+		today:<span id="dailyCountcoding">0</span>
+</p></span>
                     </div>
                     <meter id="codingMeter" min="0" max="31" low="15" high="23" optimum="30" value="0"></meter>
+		    <div class="board" id="codingBoard">
+		    </div>
                 </div>
                 <img src="./imagens/98icons/w98_laptop_infrared_2.ico" width="50" height="55"/>
         </div>
         <div class="skillBox">
-              <button class="skillBtn" id="physicalBtn" onclick="fitnessXp()">+</button>
+              <button class="skillBtn" id="fitnessBtn">+</button>
               <div class="skillDetails">
                   <div class="skillInfo">
-		      <label for="physical education">Physique</label><span class="infoRight"><p>lvl:<span id="lvl2">0</span> total:<span id="totalCount2">0</span></p></span>
+		      <label for="physical education">Physique</label><span class="infoRight"><p>lvl:<span id="lvl2">0</span> total:<span id="fitnessTotalCount">0</span>
+		today:<span id="dailyCountfitness">0</span>
+</p></span>
                   </div>
                   <meter id="fitnessMeter" min="0" max="7" low="2" high="6" value="0"></meter>
+		  <div class="board" id="fitnessBoard"></div>
               </div>
               <img src="./imagens/98icons/w98_battery.ico" width="50" height="55"/>
           </div>
 	  </div>
-	<!-- DAILIES -->
+<!-- DAILIES -->
 	<div class="quadros" id="dailiesContainer" style="display: none">
 	  <div class="titleBar">
           <h2>Dailies</h2>
           <button onclick="hideQuadro('dailiesContainer')">x</button>
            </div>
+		<div id="addDailyContainer">
+       			 <input type="text" id="dailyInput" placeholder="Enter Daily">
+        		 <button onclick="addDaily()">+</button>
+		</div>	
       		<div id="tasklistContainer"> 
-			<ul id="tasklist">
-<li><input type="checkbox" id="task1"><label for="task01">Wake Up, Cats and Coffee</label></li>
-<li title="mon: , tue: , wed: , thu: , fri: , sat: "><input type="checkbox" id="task8"><label for="task08">Workout</label></li>
-<li><input type="checkbox" id="task4"><label for="task04">Coffee</label></li>
-<li title="mon: it, tue: insta, wed: x, thu: insta, fri: x, sat: yt"><input type="checkbox" id="task5"><label for="task05">Content Creation</label></li>
-<li><input type="checkbox" id="task6"><label for="task06">Lunch, chill and nap</label></li>
-<li><input type="checkbox" id="task7"><label for="task07">Dev Studies</label></li>
-<li><input type="checkbox" id="task3"><label for="task03">Meditation</label></li>
-<li><input type="checkbox" id="task11"><label for="task11">Read</label></li>
-			</ul>
+			<ul id="dailiesList"> <!--
+				<li><input type="checkbox" id="task1"><label for="task01">Cats and Dharma</label></li>
+				<li><input type="checkbox" id="task2"><label for="task02">Coffee with bb</label></li>
+				<li><input type="checkbox" id="task3"><label for="task03">Breakfast</label></li>
+				<li><input type="checkbox" id="task4"><label for="task04">Hacking Time</label></li>
+				<li><input type="checkbox" id="task5"><label for="task05">Workout</label></li>
+				<li><input type="checkbox" id="task6"><label for="task06">Lunch and Chill</label></li>
+				<li><input type="checkbox" id="task7"><label for="task07">Job Hunting</label></li>
+				<li><input type="checkbox" id="task8"><label for="task08">Meditation</label></li>
+				<li><input type="checkbox" id="task9"><label for="task09">Read</label></li>
+		-->	</ul>
 		</div>
 	</div>
 <!-- TODO-->
@@ -112,7 +124,7 @@
 <!-- WORKOUT -->
     <div id="workoutContainer" class="quadros" style="display: none">
       <div class="titleBar">
-      <h2>Workout - Junho</h2>
+      <h2>Workout</h2>
       <button onclick="hideQuadro('workoutContainer')">x</button>
      </div>
      <div id="workoutTableDiv">
@@ -124,43 +136,38 @@
                 <th>Quinta</th>
                 <th>Sexta</th>
                 <th>Sábado</th>
-                <th>Domingo</th>
             </tr>
             <tr>
                 <td>Bench Press</td>
                 <td>T-Bar</td>
-                <td>Run</td>
-                <td>Bench Press</td>
                 <td>Squat</td>
+                <td>Overhead Press</td>
+                <td>Deadlift</td>
                 <td>Biceps Curl</td>
-                <td>Run</td>
             </tr>
             <tr>
                 <td>Dip</td>
                 <td>Lat Pulldown</td>
-                <td>x</td>
-                <td>Dip</td>
-                <td>Deadlift</td>
-                <td>Hammer Curl</td>
-                <td>x</td>
+                <td>Quad Ext</td>
+                <td>Lat R Cable</td>
+                <td>Mesa Flexora</td>
+                <td>Isolated Curl</td>
            </tr>
            <tr>
-                <td>Triceps Extension</td>
+                <td>Inclined Bench Press</td>
                 <td>Seated Row</td>
-                <td>x</td>
-                <td>Overhead Press</td>
-                <td>Calf Raise</td>
-                <td>Lateral Raises</td>
-                <td>x</td>
+                <td><del>Leg Press</del></td>
+                <td>Lat R Dbb</td>
+                <td><del>Adutora</del></td>
+                <td>Hammer Curl</td>
            </tr>
            <tr>
-                <td>-</td>
-                <td>Dumbell Shrugs</td>
-                <td>x</td>
-                <td>-</td>
-                <td>Quad Extension</td>
-                <td>Wrist Curl</td>
-                <td>x</td>
+                <td><del>Fly</del></td>
+                <td><del>Shrugs</del></td>
+                <td><del>Seated Calf Raise</del></td>
+                <td><del>Inclined Crunc</del></td>
+                <td><del>Standing Calf Raise</del></td>
+                <td>Triceps Extension</td>
           </tr>
         </table>
       </div>

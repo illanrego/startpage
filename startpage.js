@@ -424,10 +424,10 @@ document.addEventListener('DOMContentLoaded', function() {
 	const fitnessMeter = document.getElementById("fitnessMeter");
 	const fitCount = fitnessMeter.value = localStorage.getItem("fitnessCount");
 	
-	const totalCount1 = document.getElementById("totalCount1");
+	const totalCount1 = document.getElementById("codingTotalCount");
 	totalCount1.textContent = codingCount;
 	
-	const totalCount2 = document.getElementById("totalCount2");
+	const totalCount2 = document.getElementById("fitnessTotalCount");
 	totalCount2.textContent = fitCount;
 	
 	const lvlCount1 = document.getElementById('lvl1');
@@ -467,15 +467,6 @@ function getLevelMax(skillCount) {
 
 });
 
-function skillClick(skillUp) {
-	 startTimer(25, function(){
-		skillUp();
-		startTimer(5);
-	 });
-};
-
-
-
 function fitnessXp(){ 
 
 	if (localStorage.getItem("fitnessCount") === null || localStorage.getItem("fitnessCount") === undefined) {
@@ -494,23 +485,21 @@ function fitnessXp(){
 
 
 
-function codingXp(){ 
-
-
-	if (localStorage.getItem("codingCount") === null || localStorage.getItem("codingCount") === undefined) {
-		let codingCount = 1;
-	localStorage.setItem("codingCount", codingCount);
-	        codingMeter.value = codingCount;
-		const xpTotal = document.getElementById("totalCount");
-		xpTotal.textContent = `${codingCount}`;
+function upXp(skill){ 
+	if (localStorage.getItem(skill + "Count") === null || localStorage.getItem(skill + "Count") === undefined) {
+		let Count= 1;
+        	localStorage.setItem(skill + "Count", Count);
+	        codingMeter.value = Count;
+		const xpTotal = document.getElementById(skill + "TotalCount");
+		xpTotal.textContent = `${Count}`;
 	} else {
-		const originalCount = localStorage.getItem("codingCount");
-		let codingCount = originalCount;
-		codingCount++;
-		localStorage.setItem("codingCount", codingCount);
-		codingMeter.value = codingCount;
-		const xpTotal = document.getElementById("totalCount");
-		xpTotal.textContent = `${codingCount}`;
+		const originalCount = localStorage.getItem(skill +"Count");
+		let Count = originalCount;
+		Count++;
+		localStorage.setItem(skill + "Count", Count);
+		codingMeter.value = Count;
+		const xpTotal = document.getElementById(skill + "TotalCount");
+		xpTotal.textContent = `${Count}`;
 	}
 
 };
@@ -766,8 +755,72 @@ function hideAppMenu2() {
 
 
 
+// Function to add a daily task
+function addDaily() {
+    const dailyInput = document.getElementById('dailyInput').value;  // Get the input text
+    if (dailyInput) {  // Check if input is not empty
+        // Retrieve the existing dailies from localStorage
+        let dailies = JSON.parse(localStorage.getItem('dailiesList')) || [];
 
- 
+        // Add the new daily task to the array
+        dailies.push(dailyInput);
+
+        // Save the updated array back to localStorage
+        localStorage.setItem('dailiesList', JSON.stringify(dailies));
+
+        // Render the updated dailies list
+        renderDailies();
+
+        // Clear the input field
+        document.getElementById('dailyInput').value = '';
+    }
+}
+
+// Function to remove a daily task
+function removeDaily(index) {
+    // Retrieve the existing dailies from localStorage
+    let dailies = JSON.parse(localStorage.getItem('dailiesList')) || [];
+
+    // Remove the task at the specified index
+    dailies.splice(index, 1);
+
+    // Save the updated array back to localStorage
+    localStorage.setItem('dailiesList', JSON.stringify(dailies));
+
+    // Render the updated dailies list
+    renderDailies();
+}
+
+// Function to render the dailies list
+function renderDailies() {
+    const dailiesList = document.getElementById('dailiesList');
+    dailiesList.innerHTML = '';  // Clear the current list
+
+    // Retrieve the existing dailies from localStorage
+    let dailies = JSON.parse(localStorage.getItem('dailiesList')) || [];
+
+    // Loop through the dailies array and create the list items
+    dailies.forEach((daily, index) => {
+        let li = document.createElement('li');
+        let checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+
+
+    // Create a remove button for each daily
+    let removeButton = document.createElement('button');
+    removeButton.innerText = 'x';
+    removeButton.onclick = function() { removeDaily(index); };
+
+        li.appendChild(checkbox);
+        li.appendChild(document.createTextNode(daily));
+	li.appendChild(removeButton);
+        dailiesList.appendChild(li);
+    });
+}
+
+// Call renderDailies on page load to display any existing dailies
+document.addEventListener('DOMContentLoaded', renderDailies);
+
 /*DRAFT OF GENERIC FUNCTION FOR UP SKIL
 
 function skillUpXp(skill){ 
@@ -788,3 +841,66 @@ function skillUpXp(skill){
 
 };
 */ 
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize board and daily counter for each skill
+  initializeBoard('coding');
+  updateDailyCounter('coding');
+  initializeBoard('fitness');
+  updateDailyCounter('fitness');
+  // Add similar calls for other skills like 'physical', etc.
+});
+
+function initializeBoard(skill) {
+  const board = document.getElementById(skill + 'Board');
+  const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+  const boardState = JSON.parse(localStorage.getItem(skill + 'BoardState')) || {};
+  const button = document.getElementById(skill+'Btn');
+
+  button.addEventListener('click', function() {
+      const today = new Date().getDate();
+      incrementDayCount(skill, today);
+  });
+ 
+for (let day = 1; day <= daysInMonth; day++) {
+    const square = document.createElement('div');
+    square.classList.add('day-square');
+    square.dataset.day = day;
+    square.dataset.count = boardState[day] || 0;
+    square.textContent = square.dataset.count;
+    square.style.backgroundColor = `rgba(0, 255, 0, ${square.dataset.count * 0.1})`;  // Adjust color intensity
+    board.appendChild(square);
+  }
+}
+
+function incrementDayCount(skill, day) {
+  const square = document.querySelector(`#${skill}Board div[data-day='${day}']`);
+  let count = parseInt(square.dataset.count) || 0;
+  startTimer(25);
+  count++;
+  square.dataset.count = count;
+  square.style.backgroundColor = `rgba(0, 255, 0, ${count * 0.1})`;  // Adjust color based on count
+  saveBoardState(skill, day, count);
+  updateDailyCounter(skill);  // Update the daily counter after each click
+  upXp(skill);  
+}
+
+function saveBoardState(skill, day, count) {
+  const boardState = JSON.parse(localStorage.getItem(skill + 'BoardState')) || {};
+  boardState[day] = count;
+  localStorage.setItem(skill + 'BoardState', JSON.stringify(boardState));
+}
+
+function updateDailyCounter(skill) {
+  const dailyCountElement = document.getElementById('dailyCount' + skill);
+  let dailyCount = 0;
+  const boardState = JSON.parse(localStorage.getItem(skill + 'BoardState')) || {};
+  const today = new Date().getDate();
+
+  if (boardState[today]) {
+    dailyCount = boardState[today];
+  }
+
+  dailyCountElement.textContent = dailyCount;
+}
+
