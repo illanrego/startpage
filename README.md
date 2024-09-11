@@ -1,4 +1,8 @@
 # Startpage - Hub Pessoal com Estilo Retro OS 🎮
+![js vanilla](https://img.shields.io/badge/JS%20(vanilla)-3251CC)
+![HTML](https://img.shields.io/badge/HTML-108022)
+![CSS](https://img.shields.io/badge/CSS-802233)
+
 ## Visão Geral
 
 "Startpage" é uma aplicação web pessoal feita para melhorar minha (de illan) produtividade diária, com uma estética inspirada em sistemas operacionais retrô. O projeto foi desenvolvido exclusivamente para meu uso pessoal, o que significa que não há foco em personalização para outros usuários. Pelo mesmo motivo existem coisas escritas tanto em inglês quanto em português, tanto no GUI quanto no código. Paciência. 
@@ -7,8 +11,8 @@ O principal objetivo foi praticar e consolidar o que aprendi no início da minha
 
 **A aplicação é 100% frontend e foi construída utilizando JavaScript puro, HTML e CSS, sem necessidade de build ou frameworks.** O armazenamento dos dados é feito via localStorage, permitindo que as configurações e o progresso fiquem salvos no navegador.
 
+![Screenshot_20240202_173456](https://github.com/illanrego/startpage-illan/assets/126114151/d3b8e196-e7e7-46e8-a6ad-4a201cea5db1)
 ![printscreen da Startpage](./print-startpage1.png)
-![printscreen2 da Startpage](./print-startpage2.png)
 
 ## Funcionalidades Principais 🚀
 
