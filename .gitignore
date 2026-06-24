@@ -1,0 +1,8 @@
+keys.js
+node_modules/
+.codex
+.purge-key.sh
+dhammapada.sh
+scrape.js
+verse.json
+package-lock.json
