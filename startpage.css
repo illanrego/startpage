@@ -3082,6 +3082,20 @@ legend {
     max-width: 100vw !important;
   }
 
+  /* reorder Logs section: form first, balance last */
+  #financeLogsSection {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #financeLogsSection > .finance-section-heading:nth-child(1) { order: 6; }
+  #financeBalancePanel { order: 7; }
+  #financeLogsSection > .finance-section-heading:nth-child(3) { order: 1; }
+  #financeForm { order: 2; }
+  #financeTotals { order: 3; }
+  #financeLogsSection > .finance-section-heading:nth-child(6) { order: 4; }
+  #financeList { order: 5; }
+
   #financeMonthBar {
     grid-template-columns: 36px 1fr 36px;
     gap: 4px;
