@@ -980,6 +980,33 @@ function buildConnectionRows() {
     ].filter(Boolean),
   });
 
+  const deepseek = integrationRemoteState.integrations.deepseek;
+  const deepseekMeta = deepseek?.metadata || {};
+  const deepseekDisabledReason = !chatProxyConfigured
+    ? "Sign in to Supabase first"
+    : deepseekMeta.lastError
+      ? String(deepseekMeta.lastError)
+      : "DeepSeek proxy unavailable";
+  const deepseekErrorReason = deepseekMeta.lastError
+    ? String(deepseekMeta.lastError)
+    : "Unknown DeepSeek proxy error";
+  rows.push({
+    key: "deepseek",
+    name: "DeepSeek V3",
+    status: deepseek?.status || (chatProxyConfigured ? "active" : "disabled"),
+    detail: deepseek?.status || (chatProxyConfigured ? "authenticated proxy" : "signed out"),
+    details: [
+      `Model: ${deepseekMeta.model || "deepseek-chat"}`,
+      `Proxy URL: ${deepseekMeta.proxyBaseUrl || getHabiticaProxyBaseUrl()}`,
+      `Worker auth: ${chatProxyConfigured ? "Supabase session" : "signed out"}`,
+      "Provider key: stored in Worker",
+      `Last action: ${deepseekMeta.lastAction || "none"}`,
+      `Last check: ${formatConnectionDate(deepseekMeta.lastCheckedAt) || "never"}`,
+      deepseek?.status === "disabled" ? `Disabled reason: ${deepseekDisabledReason}` : "",
+      deepseek?.status === "error" ? `Error: ${deepseekErrorReason}` : "",
+    ].filter(Boolean),
+  });
+
   const gemini = integrationRemoteState.integrations.gemini;
   const geminiMeta = gemini?.metadata || {};
   const geminiDisabledReason = !chatProxyConfigured
@@ -1371,6 +1398,19 @@ async function syncConfiguredIntegrationsState() {
       proxyBaseUrl: getHabiticaProxyBaseUrl(),
       usesSupabaseAuth: true,
       model: "gemini-3.5-flash",
+    },
+  });
+
+  const deepseekMetadata = getIntegrationMetadata("deepseek");
+  await upsertBackendIntegration("deepseek", {
+    status: workerAuthConfigured ? "active" : "disabled",
+    metadata: {
+      ...deepseekMetadata,
+      configured: workerAuthConfigured,
+      directClient: false,
+      proxyBaseUrl: getHabiticaProxyBaseUrl(),
+      usesSupabaseAuth: true,
+      model: "deepseek-chat",
     },
   });
 
@@ -4779,14 +4819,9 @@ function scheduleGamifyCalendarRender() {
   });
 }
 
-function isMobileViewport() {
-  return window.matchMedia("(max-width: 768px)").matches;
-}
-
 function draggable(id) {
   var obj = document.getElementById(id);
   if (!obj) return;
-  if (isMobileViewport()) return;
   obj.style.position = "absolute";
   var titleBar = obj.querySelector(".titleBar");
   var handle = titleBar || obj;
@@ -4805,7 +4840,6 @@ function clampNumber(value, min, max) {
 }
 
 function makeResizable(id, options) {
-  if (isMobileViewport()) return;
   var obj = document.getElementById(id);
   if (!obj) return;
   if (obj.dataset.resizableReady === "true") return;
@@ -7090,6 +7124,10 @@ const CHAT_ASSISTANT_PROVIDERS = {
   gemini: {
     label: "Gemini",
     model: "gemini-3.5-flash",
+  },
+  deepseek: {
+    label: "DeepSeek V3",
+    model: "deepseek-chat",
   },
   llama: {
     label: "Llama 3.2 3B (Local)",
