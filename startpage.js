@@ -4779,9 +4779,14 @@ function scheduleGamifyCalendarRender() {
   });
 }
 
+function isMobileViewport() {
+  return window.matchMedia("(max-width: 768px)").matches;
+}
+
 function draggable(id) {
   var obj = document.getElementById(id);
   if (!obj) return;
+  if (isMobileViewport()) return;
   obj.style.position = "absolute";
   var titleBar = obj.querySelector(".titleBar");
   var handle = titleBar || obj;
@@ -4800,6 +4805,7 @@ function clampNumber(value, min, max) {
 }
 
 function makeResizable(id, options) {
+  if (isMobileViewport()) return;
   var obj = document.getElementById(id);
   if (!obj) return;
   if (obj.dataset.resizableReady === "true") return;
