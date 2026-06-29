@@ -561,6 +561,22 @@ async function importTaskLocalDataOnce() {
 }
 
 async function removeTask(taskId) {
+  const task = getTasks().find((item) => item.id === taskId);
+  if (!task) return;
+
+  // If the task came from Habitica, delete it there first (source of truth)
+  if (task.habiticaTaskId) {
+    try {
+      setTodoSyncStatus(`Deleting "${task.text}" from Habitica...`);
+      await deleteHabiticaTodoTask(task.habiticaTaskId);
+      setTodoSyncStatus(`Deleted "${task.text}" from Habitica.`);
+    } catch (error) {
+      console.error("Habitica todo delete error:", error);
+      setTodoSyncStatus(`Failed to delete "${task.text}" from Habitica: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
+  }
+
   if (isTaskBackendActive()) {
     try {
       await deleteBackendTask(taskId);
@@ -697,6 +713,7 @@ async function addTask() {
   let habiticaTaskId = "";
   let habiticaError = null;
 
+  // Habitica is the source of truth - create todo there first
   try {
     setTodoSyncStatus(`Creating "${text}" on Habitica...`);
     const created = await createHabiticaTodoTask(text);
@@ -742,6 +759,7 @@ async function addTask() {
       return;
     } catch (error) {
       console.error("Todo DB save error:", error);
+      // Fallback to local storage even if DB fails
       const fallbackTask = saveTodoToLocalFallback(task);
       if (fallbackTask) {
         taskRemoteState.todos.push(fallbackTask);
@@ -757,15 +775,18 @@ async function addTask() {
     }
   }
 
-  saveTodoToLocalFallback(task);
-  renderTaskList();
-  taskInput.value = "";
-  setTodoSyncStatus(
-    habiticaTaskId
-      ? `Habitica todo created and saved locally: "${text}".`
-      : `Habitica unavailable; saved locally: "${text}".`,
-  );
-  if (habiticaError) console.debug("Habitica fallback reason:", habiticaError);
+  // Local mode - save to localStorage
+  const savedTask = saveTodoToLocalFallback(task);
+  if (savedTask) {
+    renderTaskList();
+    taskInput.value = "";
+    setTodoSyncStatus(
+      habiticaTaskId
+        ? `Habitica todo created and saved locally: "${text}".`
+        : `Habitica unavailable; saved locally: "${text}".`,
+    );
+    if (habiticaError) console.debug("Habitica fallback reason:", habiticaError);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -4782,6 +4803,7 @@ window.onload = function () {
   draggable("kanbanContainer");
   draggable("financeContainer");
   draggable("connectionsContainer");
+  draggable("llmUsageContainer");
   makeResizable("skillsContainer", {
     minWidth: 540,
     minHeight: 360,
@@ -6035,6 +6057,39 @@ async function createHabiticaTodoTask(text) {
   throw lastError || new Error("Failed to create Habitica todo");
 }
 
+async function deleteHabiticaTodoTask(taskId) {
+  const baseUrl = getHabiticaProxyBaseUrl();
+  const authorizationHeaders = await getWorkerAuthorizationHeaders();
+
+  const response = await fetch(
+    `${baseUrl}/api/habitica/tasks/${encodeURIComponent(taskId)}`,
+    {
+      method: "DELETE",
+      headers: {
+        "content-type": "application/json",
+        ...authorizationHeaders,
+      },
+    },
+  );
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch (_error) {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    const errMsg =
+      payload && typeof payload.error === "string"
+        ? payload.error
+        : `HTTP ${response.status}`;
+    throw new Error(errMsg);
+  }
+
+  return true;
+}
+
 async function syncHabiticaTodosToLocalTaskList(tasks) {
   try {
     const allTasks = Array.isArray(tasks) ? tasks : await fetchHabiticaTasksFromProxy();
@@ -6061,12 +6116,14 @@ async function syncHabiticaTodosToLocalTaskList(tasks) {
     let removed = 0;
     let changed = false;
 
+    // Process Habitica todos - these are the source of truth
     for (const todo of habiticaTodos) {
       const id = typeof todo.id === "string" ? todo.id : "";
       if (!id) continue;
       const title = getHabiticaTaskTitle(todo);
       const existing = byHabiticaId.get(id);
       if (existing) {
+        // Update existing task if text has changed
         if (existing.text !== title) {
           existing.text = title;
           if (isTaskBackendActive()) {
@@ -6078,6 +6135,7 @@ async function syncHabiticaTodosToLocalTaskList(tasks) {
         continue;
       }
 
+      // Add new task from Habitica
       const nextTask = {
         id: makeLocalTaskId(),
         text: title,
@@ -6102,6 +6160,8 @@ async function syncHabiticaTodosToLocalTaskList(tasks) {
           saveTodoToLocalFallback(nextTask);
           setTodoSyncStatus(`Habitica sync DB failed; saved "${title}" locally.`);
         }
+      } else {
+        saveTodoToLocalFallback(nextTask);
       }
 
       localTasks.push(nextTask);
@@ -6109,16 +6169,26 @@ async function syncHabiticaTodosToLocalTaskList(tasks) {
       added++;
     }
 
+    // Remove local tasks that no longer exist in Habitica (source of truth)
     for (let i = localTasks.length - 1; i >= 0; i--) {
       const localTask = localTasks[i];
+      // Only process tasks that came from Habitica
       if (!localTask.habiticaTaskId) continue;
-      if (pendingIds.has(localTask.habiticaTaskId)) continue;
-      if (isTaskBackendActive()) {
-        await updateBackendTask(localTask.id, { completed_at: new Date().toISOString() });
+      // If the Habitica task no longer exists, remove it locally
+      if (!pendingIds.has(localTask.habiticaTaskId)) {
+        if (isTaskBackendActive()) {
+          try {
+            // Mark as completed in backend (soft delete)
+            await updateBackendTask(localTask.id, { completed_at: new Date().toISOString() });
+          } catch (error) {
+            console.error("Habitica todo DB remove error:", error);
+          }
+        }
+        // Remove from local array
+        localTasks.splice(i, 1);
+        removed++;
+        changed = true;
       }
-      localTasks.splice(i, 1);
-      removed++;
-      changed = true;
     }
 
     if (changed) {
@@ -7522,6 +7592,142 @@ document.addEventListener('click', function(event) {
   
   if (!emojiBoard.contains(event.target) && event.target !== emojiButton) {
     emojiBoard.style.display = 'none';
+  }
+});
+
+// LLM USAGE TRACKER
+
+async function fetchLlmUsageFromWorker(provider) {
+  const baseUrl = getHabiticaProxyBaseUrl();
+  const authorizationHeaders = await getWorkerAuthorizationHeaders();
+  const response = await fetch(`${baseUrl}/api/usage/${encodeURIComponent(provider)}`, {
+    method: "GET",
+    headers: authorizationHeaders,
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    const errMsg = payload && typeof payload.error === "string" ? payload.error : `HTTP ${response.status}`;
+    throw new Error(errMsg);
+  }
+  return payload;
+}
+
+async function fetchOllamaUsage() {
+  try {
+    const response = await fetch("http://localhost:11434/api/tags", {
+      method: "GET",
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!response.ok) throw new Error(`Ollama returned ${response.status}`);
+    const data = await response.json();
+    const models = (Array.isArray(data.models) ? data.models : []).map(
+      (m) => m.name || m.model || ""
+    ).filter(Boolean);
+    return { running: true, modelCount: models.length, models };
+  } catch (error) {
+    return { running: false, modelCount: 0, models: [], error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+function setLlmUsageStatus(message) {
+  const el = document.getElementById("llmUsageStatus");
+  if (el) el.textContent = message;
+}
+
+function renderOpenaiUsage(data) {
+  const body = document.getElementById("openaiUsageBody");
+  if (!body) return;
+  if (!data || !Array.isArray(data.data)) {
+    body.innerHTML = "<p>No usage data returned.</p>";
+    return;
+  }
+  const today = data.data.find((d) => d.snapshot_id) || data.data[0] || {};
+  const input = Number(today.n_context_tokens_total) || 0;
+  const output = Number(today.n_generated_tokens_total) || 0;
+  body.innerHTML = `
+    <p>Date: ${today.snapshot_id || "today"}</p>
+    <p>Input tokens: ${input.toLocaleString()}</p>
+    <p>Output tokens: ${output.toLocaleString()}</p>
+    <p>Total: ${(input + output).toLocaleString()}</p>
+  `;
+}
+
+function renderDeepseekUsage(data) {
+  const body = document.getElementById("deepseekUsageBody");
+  if (!body) return;
+  if (!data || !Array.isArray(data.balance_infos)) {
+    body.innerHTML = "<p>No balance data.</p>";
+    return;
+  }
+  const info = data.balance_infos[0] || {};
+  body.innerHTML = `
+    <p>Available: ${data.is_available ? "Yes" : "No"}</p>
+    <p>Currency: ${info.currency || "USD"}</p>
+    <p>Total balance: ${info.total_balance || "0"}</p>
+    <p>Granted: ${info.granted_balance || "0"}</p>
+    <p>Topped up: ${info.topped_up_balance || "0"}</p>
+  `;
+}
+
+function renderOllamaUsage(status) {
+  const body = document.getElementById("ollamaUsageBody");
+  if (!body) return;
+  if (!status.running) {
+    body.innerHTML = `<p>Not running: ${status.error || "Ollama unreachable"}</p>`;
+    return;
+  }
+  body.innerHTML = `
+    <p>Models loaded: ${status.modelCount}</p>
+    <p>${status.models.join(", ") || "none"}</p>
+  `;
+}
+
+async function refreshLlmUsage() {
+  const refreshBtn = document.getElementById("llmUsageRefreshBtn");
+  if (refreshBtn) refreshBtn.disabled = true;
+  setLlmUsageStatus("Refreshing...");
+
+  try {
+    const openaiData = await fetchLlmUsageFromWorker("openai");
+    renderOpenaiUsage(openaiData);
+  } catch (error) {
+    document.getElementById("openaiUsageBody").innerHTML = `<p>Error: ${error.message}</p>`;
+  }
+
+  try {
+    const deepseekData = await fetchLlmUsageFromWorker("deepseek");
+    renderDeepseekUsage(deepseekData);
+  } catch (error) {
+    document.getElementById("deepseekUsageBody").innerHTML = `<p>Error: ${error.message}</p>`;
+  }
+
+  try {
+    const ollamaStatus = await fetchOllamaUsage();
+    renderOllamaUsage(ollamaStatus);
+  } catch (error) {
+    document.getElementById("ollamaUsageBody").innerHTML = `<p>Error: ${error.message}</p>`;
+  }
+
+  setLlmUsageStatus("Done.");
+  if (refreshBtn) refreshBtn.disabled = false;
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  const refreshBtn = document.getElementById("llmUsageRefreshBtn");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", refreshLlmUsage);
+  }
+  // Auto-refresh on first open
+  const container = document.getElementById("llmUsageContainer");
+  if (container) {
+    const observer = new MutationObserver(function (mutations) {
+      mutations.forEach(function (mutation) {
+        if (mutation.target.style.display !== "none") {
+          refreshLlmUsage();
+        }
+      });
+    });
+    observer.observe(container, { attributes: true, attributeFilter: ["style"] });
   }
 });
 

@@ -3303,3 +3303,47 @@ legend {
     margin-bottom: 6px;
   }
 }
+
+/* LLM Usage Panel */
+#llmUsagePanel {
+  padding: 8px;
+}
+
+#llmUsageToolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+#llmUsageStatus {
+  font-size: 12px;
+  color: #666;
+}
+
+#llmUsageCards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.llm-usage-card {
+  border: 1px solid #888;
+  background: #fff;
+  padding: 8px;
+}
+
+.llm-usage-card h4 {
+  margin: 0 0 4px 0;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.llm-usage-body {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.llm-usage-body p {
+  margin: 2px 0;
+}

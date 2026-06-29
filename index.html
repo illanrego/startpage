@@ -58,11 +58,15 @@
     <img src="./imagens/98icons/w98_calculator.ico" width="60">
     <label>finance</label>
  </div>
- <div class="icon" id="connectionsIconDiv" onclick="hideQuadro('connectionsContainer')">
-    <img src="./imagens/98icons/w98_web_file.ico" width="60">
-    <label>system</label>
- </div>
- </div>
+  <div class="icon" id="connectionsIconDiv" onclick="hideQuadro('connectionsContainer')">
+     <img src="./imagens/98icons/w98_web_file.ico" width="60">
+     <label>system</label>
+  </div>
+  <div class="icon" id="llmUsageIconDiv" onclick="hideQuadro('llmUsageContainer')">
+     <img src="./imagens/98icons/w98_joystick.ico" width="60">
+     <label>LLM Usage</label>
+  </div>
+  </div>
 
 <!-- MAIN FEATURES -->
 <!-- SKILLS --> 
@@ -284,6 +288,32 @@
         <button id="connectionsRefreshBtn" type="button">refresh</button>
       </div>
       <ul id="connectionsStatusList"></ul>
+    </div>
+  </div>
+  <div class="quadros" id="llmUsageContainer" style="display: none">
+    <div class="titleBar">
+      <h2>LLM Usage</h2>
+      <button onclick="hideQuadro('llmUsageContainer')">x</button>
+    </div>
+    <div id="llmUsagePanel">
+      <div id="llmUsageToolbar">
+        <button id="llmUsageRefreshBtn" type="button">refresh</button>
+        <span id="llmUsageStatus"></span>
+      </div>
+      <div id="llmUsageCards">
+        <div class="llm-usage-card" id="openaiUsageCard">
+          <h4>OpenAI / Codex</h4>
+          <div class="llm-usage-body" id="openaiUsageBody">—</div>
+        </div>
+        <div class="llm-usage-card" id="deepseekUsageCard">
+          <h4>DeepSeek</h4>
+          <div class="llm-usage-body" id="deepseekUsageBody">—</div>
+        </div>
+        <div class="llm-usage-card" id="ollamaUsageCard">
+          <h4>Ollama (local)</h4>
+          <div class="llm-usage-body" id="ollamaUsageBody">—</div>
+        </div>
+      </div>
     </div>
   </div>
     </section>
@@ -635,6 +665,7 @@
             <li onclick="hideQuadro('chatContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_message_file.ico" width="35" height="35">Chat Assistant</li>
             <li onclick="hideQuadro('financeContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_calculator.ico" width="35" height="35">Finance Log</li>
             <li onclick="hideQuadro('connectionsContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_web_file.ico" width="35" height="35">Connections</li>
+            <li onclick="hideQuadro('llmUsageContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_joystick.ico" width="35" height="35">LLM Usage</li>
             <li onclick="hideQuadro('nextFeatures'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_tools_gear.ico" width="35" height="35">Next Features</li>
 	
 	</ul>
