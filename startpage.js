@@ -6433,7 +6433,7 @@ function isHabiticaHabitTask(task) {
   return /^\s*\[habit\]/i.test(title);
 }
 
-async function scoreHabiticaIdeaHabitUp(category) {
+async function scoreHabiticaIdeaHabitUp(category, ideaText) {
   const aliases = HABITICA_IDEA_HABIT_ALIASES[category];
   if (!aliases || !aliases.length) return;
 
@@ -6470,8 +6470,43 @@ async function scoreHabiticaIdeaHabitUp(category) {
       return;
     }
 
+    const habitTitle = getHabiticaTaskTitle(targetHabit);
+
+    // 1. Score up the habit (+)
     await markHabiticaTaskDone(taskId);
-    setIdeasSyncStatus(`+1 on "${getHabiticaTaskTitle(targetHabit)}"`);
+
+    // 2. Append idea to the habit's notes
+    if (ideaText) {
+      const currentNotes = typeof targetHabit.notes === "string" ? targetHabit.notes.trim() : "";
+      const newLine = `- ${ideaText}`;
+      const updatedNotes = currentNotes
+        ? `${currentNotes}\n${newLine}`
+        : newLine;
+
+      const baseUrl = getHabiticaProxyBaseUrl();
+      const authorizationHeaders = await getWorkerAuthorizationHeaders();
+      const response = await fetch(
+        `${baseUrl}/api/habitica/tasks/${encodeURIComponent(taskId)}`,
+        {
+          method: "PUT",
+          headers: {
+            "content-type": "application/json",
+            ...authorizationHeaders,
+          },
+          body: JSON.stringify({ notes: updatedNotes }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        setIdeasSyncStatus(
+          `+1 on "${habitTitle}", but notes update failed: ${payload?.error || `HTTP ${response.status}`}`,
+        );
+        return;
+      }
+    }
+
+    setIdeasSyncStatus(`+1 on "${habitTitle}" (notes updated)`);
   } catch (error) {
     console.error("Habitica habit score error:", error);
     setIdeasSyncStatus(`Failed to score habit: ${error instanceof Error ? error.message : String(error)}`);
@@ -6500,7 +6535,7 @@ async function addVideoIdea() {
   renderIdeas();
   input.value = "";
   setIdeasSyncStatus(`Saved "${text}". Scoring Habitica habit...`);
-  await scoreHabiticaIdeaHabitUp("video");
+  await scoreHabiticaIdeaHabitUp("video", text);
 }
 
 async function addJokeIdea() {
@@ -6520,7 +6555,7 @@ async function addJokeIdea() {
   renderIdeas();
   input.value = "";
   setIdeasSyncStatus(`Saved "${text}". Scoring Habitica habit...`);
-  await scoreHabiticaIdeaHabitUp("joke");
+  await scoreHabiticaIdeaHabitUp("joke", text);
 }
 
 function removeVideoIdea(itemId) {
