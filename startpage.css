@@ -3089,6 +3089,33 @@ legend {
     gap: 4px;
   }
 
+  /* ----- IDEAS (Video / Joke) ----- */
+  #ideasContainer {
+    width: 100vw !important;
+    min-width: 0 !important;
+    max-width: 100vw !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  #ideasPanel {
+    flex-direction: column;
+  }
+
+  #videoIdeasColumn,
+  #jokeIdeasColumn {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .ideas-list {
+    max-height: 180px;
+  }
+
+  .ideas-add-row input {
+    font-size: 16px;
+  }
+
   /* ----- POMODORO ----- */
   #pomodoro {
     width: 100vw !important;
