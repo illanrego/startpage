@@ -58,6 +58,10 @@
     <img src="./imagens/98icons/w98_calculator.ico" width="60">
     <label>finance</label>
  </div>
+  <div class="icon" id="ideasIconDiv" onclick="hideQuadro('ideasContainer')">
+     <img src="./imagens/98icons/w98_notepad.ico" width="60">
+     <label>Ideas</label>
+  </div>
   <div class="icon" id="connectionsIconDiv" onclick="hideQuadro('connectionsContainer')">
      <img src="./imagens/98icons/w98_web_file.ico" width="60">
      <label>system</label>
@@ -216,6 +220,32 @@
         <button onclick="addRec()">+</button>
       </div>
         <ul id="recList"></ul>
+      </div>
+<!-- IDEAS -->
+      <div id="ideasContainer" class="quadros" style="display: none">
+        <div class="titleBar">
+          <h2>Ideas</h2>
+          <button onclick="hideQuadro('ideasContainer')">x</button>
+        </div>
+        <div id="ideasPanel">
+          <div id="videoIdeasColumn">
+            <div class="ideas-column-title">Video Ideas</div>
+            <div class="ideas-add-row">
+              <input type="text" id="videoIdeaInput" placeholder="Add video idea...">
+              <button onclick="addVideoIdea()">+</button>
+            </div>
+            <ul id="videoIdeaList" class="ideas-list"></ul>
+          </div>
+          <div id="jokeIdeasColumn">
+            <div class="ideas-column-title">Joke Ideas</div>
+            <div class="ideas-add-row">
+              <input type="text" id="jokeIdeaInput" placeholder="Add joke idea...">
+              <button onclick="addJokeIdea()">+</button>
+            </div>
+            <ul id="jokeIdeaList" class="ideas-list"></ul>
+          </div>
+        </div>
+        <p id="ideasSyncStatus" class="ideas-sync-status"></p>
       </div>
 <!-- WORKOUT -->
     <div id="workoutContainer" class="quadros" style="display: none">
@@ -664,6 +694,7 @@
             <li onclick="hideQuadro('dailiesContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_wia_img_check.ico" width="35" height="35">Dailies</li>
             <li onclick="hideQuadro('chatContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_message_file.ico" width="35" height="35">Chat Assistant</li>
             <li onclick="hideQuadro('financeContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_calculator.ico" width="35" height="35">Finance Log</li>
+            <li onclick="hideQuadro('ideasContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_notepad.ico" width="35" height="35">Ideas</li>
             <li onclick="hideQuadro('connectionsContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_web_file.ico" width="35" height="35">Connections</li>
             <li onclick="hideQuadro('llmUsageContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_joystick.ico" width="35" height="35">LLM Usage</li>
             <li onclick="hideQuadro('nextFeatures'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_tools_gear.ico" width="35" height="35">Next Features</li>

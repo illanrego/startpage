@@ -4794,6 +4794,7 @@ window.onload = function () {
   draggable("dailiesContainer");
   draggable("todoContainer");
   draggable("recContainer");
+  draggable("ideasContainer");
   draggable("calendarContainer");
   draggable("wallpContainer");
   draggable("calcContainer");
@@ -6392,6 +6393,164 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
   setHabiticaSyncStatus("Ready. Click sync to read Habitica tasks.");
+});
+
+// IDEAS (Video + Joke) with Habitica habit scoring
+
+const IDEA_VIDEOS_STORAGE_KEY = "ideaVideosList";
+const IDEA_JOKES_STORAGE_KEY = "ideaJokesList";
+
+const HABITICA_IDEA_HABIT_ALIASES = {
+  video: ["video", "video idea", "video ideia", "video content"],
+  joke: ["joke", "joke idea", "piada"],
+};
+
+function setIdeasSyncStatus(message) {
+  const status = document.getElementById("ideasSyncStatus");
+  if (status) status.textContent = message;
+}
+
+function getVideoIdeas() {
+  return getLocalTextList(IDEA_VIDEOS_STORAGE_KEY, "vididea");
+}
+
+function setVideoIdeas(items) {
+  setLocalTextList(IDEA_VIDEOS_STORAGE_KEY, "vididea", items);
+}
+
+function getJokeIdeas() {
+  return getLocalTextList(IDEA_JOKES_STORAGE_KEY, "jokeidea");
+}
+
+function setJokeIdeas(items) {
+  setLocalTextList(IDEA_JOKES_STORAGE_KEY, "jokeidea", items);
+}
+
+function isHabiticaHabitTask(task) {
+  const type = task && typeof task.type === "string" ? task.type.toLowerCase() : "";
+  if (type === "habit") return true;
+  const title = task && typeof task.text === "string" ? task.text : "";
+  return /^\s*\[habit\]/i.test(title);
+}
+
+async function scoreHabiticaIdeaHabitUp(category) {
+  const aliases = HABITICA_IDEA_HABIT_ALIASES[category];
+  if (!aliases || !aliases.length) return;
+
+  try {
+    const tasks = await fetchHabiticaTasksFromProxy();
+    if (!Array.isArray(tasks)) {
+      setIdeasSyncStatus("Could not fetch Habitica tasks to score habit.");
+      return;
+    }
+
+    const habits = tasks.filter(isHabiticaHabitTask);
+    if (habits.length === 0) {
+      setIdeasSyncStatus("No habits found in Habitica. Create one first.");
+      return;
+    }
+
+    const targetHabit = habits.find((task) => {
+      const title = normalizeHabiticaTitle(getHabiticaTaskTitle(task));
+      return aliases.some((alias) => {
+        const normAlias = normalizeHabiticaTitle(alias);
+        return title === normAlias || title.includes(normAlias);
+      });
+    });
+
+    if (!targetHabit) {
+      const aliasList = aliases.join(", ");
+      setIdeasSyncStatus(`No Habitica habit found matching "${aliasList}".`);
+      return;
+    }
+
+    const taskId = typeof targetHabit.id === "string" ? targetHabit.id : "";
+    if (!taskId) {
+      setIdeasSyncStatus("Found habit but missing task ID.");
+      return;
+    }
+
+    await markHabiticaTaskDone(taskId);
+    setIdeasSyncStatus(`+1 on "${getHabiticaTaskTitle(targetHabit)}"`);
+  } catch (error) {
+    console.error("Habitica habit score error:", error);
+    setIdeasSyncStatus(`Failed to score habit: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+function renderIdeas() {
+  renderTextList("videoIdeaList", getVideoIdeas(), removeVideoIdea);
+  renderTextList("jokeIdeaList", getJokeIdeas(), removeJokeIdea);
+}
+
+async function addVideoIdea() {
+  const input = document.getElementById("videoIdeaInput");
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+
+  const item = {
+    id: makeLocalListItemId("vididea"),
+    text,
+    createdAt: new Date().toISOString(),
+  };
+  const items = getVideoIdeas();
+  items.push(item);
+  setVideoIdeas(items);
+  renderIdeas();
+  input.value = "";
+  setIdeasSyncStatus(`Saved "${text}". Scoring Habitica habit...`);
+  await scoreHabiticaIdeaHabitUp("video");
+}
+
+async function addJokeIdea() {
+  const input = document.getElementById("jokeIdeaInput");
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+
+  const item = {
+    id: makeLocalListItemId("jokeidea"),
+    text,
+    createdAt: new Date().toISOString(),
+  };
+  const items = getJokeIdeas();
+  items.push(item);
+  setJokeIdeas(items);
+  renderIdeas();
+  input.value = "";
+  setIdeasSyncStatus(`Saved "${text}". Scoring Habitica habit...`);
+  await scoreHabiticaIdeaHabitUp("joke");
+}
+
+function removeVideoIdea(itemId) {
+  setVideoIdeas(getVideoIdeas().filter((item) => item.id !== itemId));
+  setIdeasSyncStatus("Removed video idea.");
+  renderIdeas();
+}
+
+function removeJokeIdea(itemId) {
+  setJokeIdeas(getJokeIdeas().filter((item) => item.id !== itemId));
+  setIdeasSyncStatus("Removed joke idea.");
+  renderIdeas();
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  renderIdeas();
+
+  const videoInput = document.getElementById("videoIdeaInput");
+  if (videoInput) {
+    videoInput.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") addVideoIdea();
+    });
+  }
+
+  const jokeInput = document.getElementById("jokeIdeaInput");
+  if (jokeInput) {
+    jokeInput.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") addJokeIdea();
+    });
+  }
 });
 
 /*DRAFT OF GENERIC FUNCTION FOR UP SKIL
