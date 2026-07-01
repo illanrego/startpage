@@ -1553,6 +1553,7 @@ async function refreshBackendModules(options = {}) {
       const habiticaTasks = await fetchHabiticaTasksFromProxy();
       await syncHabiticaTodosToLocalTaskList(habiticaTasks);
       await syncHabiticaDailiesToTaskList(habiticaTasks);
+      syncIdeasFromHabiticaTasks(habiticaTasks);
     } catch (error) {
       console.error("Habitica task sync during backend refresh failed:", error);
     }
@@ -6651,6 +6652,7 @@ async function loadHabiticaTasks() {
     const baseUrl = getHabiticaProxyBaseUrl();
     const dailyResult = await syncHabiticaDailiesToTaskList(tasks);
     await syncHabiticaTodosToLocalTaskList(tasks);
+    syncIdeasFromHabiticaTasks(tasks);
     const dailyCount = tasks.filter(isHabiticaDailyTask).length;
     void recordIntegrationStatus("habitica", "active", {
       lastAction: "sync_tasks",
@@ -6728,6 +6730,70 @@ function isHabiticaHabitTask(task) {
   return /^\s*\[habit\]/i.test(title);
 }
 
+function findHabiticaIdeaHabit(tasks, category) {
+  const aliases = HABITICA_IDEA_HABIT_ALIASES[category] || [];
+  return (Array.isArray(tasks) ? tasks : [])
+    .filter(isHabiticaHabitTask)
+    .find((task) => {
+      const title = normalizeHabiticaTitle(getHabiticaTaskTitle(task));
+      return aliases.some((alias) => {
+        const normalizedAlias = normalizeHabiticaTitle(alias);
+        return title === normalizedAlias || title.includes(normalizedAlias);
+      });
+    });
+}
+
+function getHabiticaIdeaLines(notes, prefix) {
+  return String(notes || "")
+    .split(/\r?\n/)
+    .map((line) => line.match(/^\s*-\s*(.*?)\s*$/)?.[1] || "")
+    .filter(Boolean)
+    .map((text) => ({
+      id: makeLocalListItemId(prefix),
+      text,
+      createdAt: new Date().toISOString(),
+    }));
+}
+
+function syncIdeasFromHabiticaTasks(tasks) {
+  const videoHabit = findHabiticaIdeaHabit(tasks, "video");
+  const jokeHabit = findHabiticaIdeaHabit(tasks, "joke");
+
+  if (videoHabit) {
+    setVideoIdeas(getHabiticaIdeaLines(videoHabit.notes, "vididea"));
+  }
+  if (jokeHabit) {
+    setJokeIdeas(getHabiticaIdeaLines(jokeHabit.notes, "jokeidea"));
+  }
+
+  renderIdeas();
+  const syncedCategories = [videoHabit && "video", jokeHabit && "joke"].filter(Boolean);
+  if (syncedCategories.length) {
+    setIdeasSyncStatus(`Loaded ${syncedCategories.join(" and ")} ideas from Habitica.`);
+  }
+}
+
+async function updateHabiticaTaskNotes(taskId, notes) {
+  const baseUrl = getHabiticaProxyBaseUrl();
+  const authorizationHeaders = await getWorkerAuthorizationHeaders();
+  const response = await fetch(
+    `${baseUrl}/api/habitica/tasks/${encodeURIComponent(taskId)}`,
+    {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        ...authorizationHeaders,
+      },
+      body: JSON.stringify({ notes }),
+    },
+  );
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.error || `HTTP ${response.status}`);
+  }
+}
+
 async function scoreHabiticaIdeaHabitUp(category, ideaText) {
   const aliases = HABITICA_IDEA_HABIT_ALIASES[category];
   if (!aliases || !aliases.length) return;
@@ -6745,13 +6811,7 @@ async function scoreHabiticaIdeaHabitUp(category, ideaText) {
       return;
     }
 
-    const targetHabit = habits.find((task) => {
-      const title = normalizeHabiticaTitle(getHabiticaTaskTitle(task));
-      return aliases.some((alias) => {
-        const normAlias = normalizeHabiticaTitle(alias);
-        return title === normAlias || title.includes(normAlias);
-      });
-    });
+    const targetHabit = findHabiticaIdeaHabit(tasks, category);
 
     if (!targetHabit) {
       const aliasList = aliases.join(", ");
@@ -6778,24 +6838,11 @@ async function scoreHabiticaIdeaHabitUp(category, ideaText) {
         ? `${currentNotes}\n${newLine}`
         : newLine;
 
-      const baseUrl = getHabiticaProxyBaseUrl();
-      const authorizationHeaders = await getWorkerAuthorizationHeaders();
-      const response = await fetch(
-        `${baseUrl}/api/habitica/tasks/${encodeURIComponent(taskId)}`,
-        {
-          method: "PUT",
-          headers: {
-            "content-type": "application/json",
-            ...authorizationHeaders,
-          },
-          body: JSON.stringify({ notes: updatedNotes }),
-        },
-      );
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
+      try {
+        await updateHabiticaTaskNotes(taskId, updatedNotes);
+      } catch (error) {
         setIdeasSyncStatus(
-          `+1 on "${habitTitle}", but notes update failed: ${payload?.error || `HTTP ${response.status}`}`,
+          `+1 on "${habitTitle}", but notes update failed: ${error instanceof Error ? error.message : String(error)}`,
         );
         return;
       }
@@ -6853,16 +6900,60 @@ async function addJokeIdea() {
   await scoreHabiticaIdeaHabitUp("joke", text);
 }
 
-function removeVideoIdea(itemId) {
-  setVideoIdeas(getVideoIdeas().filter((item) => item.id !== itemId));
-  setIdeasSyncStatus("Removed video idea.");
-  renderIdeas();
+async function removeHabiticaIdea(category, itemId) {
+  const isVideo = category === "video";
+  const items = isVideo ? getVideoIdeas() : getJokeIdeas();
+  const item = items.find((candidate) => candidate.id === itemId);
+  if (!item) return;
+
+  setIdeasSyncStatus(`Removing "${item.text}" from Habitica...`);
+
+  try {
+    const tasks = await fetchHabiticaTasksFromProxy();
+    const targetHabit = findHabiticaIdeaHabit(tasks, category);
+    const taskId = typeof targetHabit?.id === "string" ? targetHabit.id : "";
+    if (!taskId) {
+      throw new Error(`Habitica ${category} idea habit was not found`);
+    }
+
+    let removed = false;
+    const updatedNotes = String(targetHabit.notes || "")
+      .split(/\r?\n/)
+      .filter((line) => {
+        if (removed) return true;
+        const ideaText = line.match(/^\s*-\s*(.*?)\s*$/)?.[1] || "";
+        if (ideaText !== item.text.trim()) return true;
+        removed = true;
+        return false;
+      })
+      .join("\n");
+
+    if (!removed) {
+      throw new Error("matching idea line was not found in Habitica notes");
+    }
+
+    await updateHabiticaTaskNotes(taskId, updatedNotes);
+    if (isVideo) {
+      setVideoIdeas(items.filter((candidate) => candidate.id !== itemId));
+    } else {
+      setJokeIdeas(items.filter((candidate) => candidate.id !== itemId));
+    }
+    renderIdeas();
+    setIdeasSyncStatus(`Removed "${item.text}" from Habitica.`);
+  } catch (error) {
+    console.error("Habitica idea removal error:", error);
+    setIdeasSyncStatus(
+      `Could not remove idea: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
-function removeJokeIdea(itemId) {
-  setJokeIdeas(getJokeIdeas().filter((item) => item.id !== itemId));
-  setIdeasSyncStatus("Removed joke idea.");
-  renderIdeas();
+async function removeVideoIdea(itemId) {
+  await removeHabiticaIdea("video", itemId);
+}
+
+async function removeJokeIdea(itemId) {
+  await removeHabiticaIdea("joke", itemId);
 }
 
 document.addEventListener("DOMContentLoaded", function () {
