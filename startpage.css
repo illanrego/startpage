@@ -992,6 +992,20 @@ label {
   z-index: 0;
 }
 
+#llmUsageIconDiv {
+  position: absolute;
+  top: 200px;
+  right: 30px;
+  z-index: 0;
+}
+
+#ideasIconDiv {
+  position: absolute;
+  top: 300px;
+  right: 30px;
+  z-index: 0;
+}
+
 #connectionsIconDiv {
   position: absolute;
   top: 800px;
@@ -1942,7 +1956,7 @@ legend {
 #kanbanIconDiv {
   position: absolute;
   top: 100px;
-  right: 100px;
+  right: 30px;
 }
 
 #kanbanContainer {
