@@ -4,7 +4,7 @@
 ![CSS](https://img.shields.io/badge/CSS-802233)
 
 ## Visão Geral
-
+.
 "Startpage" é uma aplicação web pessoal feita para melhorar minha (de illan) produtividade diária, com uma estética inspirada em sistemas operacionais retrô. O projeto foi desenvolvido exclusivamente para meu uso pessoal, o que significa que não há foco em personalização para outros usuários. Pelo mesmo motivo existem coisas escritas tanto em inglês quanto em português, tanto no GUI quanto no código. Paciência. 
 
 O principal objetivo foi praticar e consolidar o que aprendi no início da minha jornada de desenvolvimento (há quase dois anos), com pequenos ajustes e implementações recentes.
