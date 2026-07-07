@@ -8231,21 +8231,21 @@ async function fetchLlmUsageFromWorker(provider) {
   return payload;
 }
 
-async function fetchOllamaUsage() {
-  try {
-    const response = await fetch("http://localhost:11434/api/tags", {
-      method: "GET",
-      signal: AbortSignal.timeout(3000),
-    });
-    if (!response.ok) throw new Error(`Ollama returned ${response.status}`);
-    const data = await response.json();
-    const models = (Array.isArray(data.models) ? data.models : []).map(
-      (m) => m.name || m.model || ""
-    ).filter(Boolean);
-    return { running: true, modelCount: models.length, models };
-  } catch (error) {
-    return { running: false, modelCount: 0, models: [], error: error instanceof Error ? error.message : String(error) };
+function setLlmUsageStatus(message) {
+  const el = document.getElementById("llmUsageStatus");
+  if (el) el.textContent = message;
+}
+
+function renderDeepseekUsage(data) {
+  const body = document.getElementById("deepseekUsageBody");
+  if (!body) return;
+  if (!data || !Array.isArray(data.balance_infos)) {
+    body.innerHTML = '<p class="deepseek-balance">$0.00</p>';
+    return;
   }
+  const info = data.balance_infos[0] || {};
+  const total = info.total_balance || "0";
+  body.innerHTML = `<p class="deepseek-balance">$${total}</p>`;
 }
 
 async function refreshLlmUsage() {
