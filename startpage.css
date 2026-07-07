@@ -3412,3 +3412,11 @@ legend {
 .llm-usage-body p {
   margin: 2px 0;
 }
+
+.llm-usage-body .deepseek-balance {
+  font-size: 28px;
+  font-weight: bold;
+  text-align: center;
+  margin: 12px 0;
+  color: #000;
+}

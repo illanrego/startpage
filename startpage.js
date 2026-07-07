@@ -8275,17 +8275,12 @@ function renderDeepseekUsage(data) {
   const body = document.getElementById("deepseekUsageBody");
   if (!body) return;
   if (!data || !Array.isArray(data.balance_infos)) {
-    body.innerHTML = "<p>No balance data.</p>";
+    body.innerHTML = '<p class="deepseek-balance">$0.00</p>';
     return;
   }
   const info = data.balance_infos[0] || {};
-  body.innerHTML = `
-    <p>Available: ${data.is_available ? "Yes" : "No"}</p>
-    <p>Currency: ${info.currency || "USD"}</p>
-    <p>Total balance: ${info.total_balance || "0"}</p>
-    <p>Granted: ${info.granted_balance || "0"}</p>
-    <p>Topped up: ${info.topped_up_balance || "0"}</p>
-  `;
+  const total = info.total_balance || "0";
+  body.innerHTML = `<p class="deepseek-balance">$${total}</p>`;
 }
 
 function renderOllamaUsage(status) {
