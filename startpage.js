@@ -8248,78 +8248,16 @@ async function fetchOllamaUsage() {
   }
 }
 
-function setLlmUsageStatus(message) {
-  const el = document.getElementById("llmUsageStatus");
-  if (el) el.textContent = message;
-}
-
-function renderOpenaiUsage(data) {
-  const body = document.getElementById("openaiUsageBody");
-  if (!body) return;
-  if (!data || !Array.isArray(data.data)) {
-    body.innerHTML = "<p>No usage data returned.</p>";
-    return;
-  }
-  const today = data.data.find((d) => d.snapshot_id) || data.data[0] || {};
-  const input = Number(today.n_context_tokens_total) || 0;
-  const output = Number(today.n_generated_tokens_total) || 0;
-  body.innerHTML = `
-    <p>Date: ${today.snapshot_id || "today"}</p>
-    <p>Input tokens: ${input.toLocaleString()}</p>
-    <p>Output tokens: ${output.toLocaleString()}</p>
-    <p>Total: ${(input + output).toLocaleString()}</p>
-  `;
-}
-
-function renderDeepseekUsage(data) {
-  const body = document.getElementById("deepseekUsageBody");
-  if (!body) return;
-  if (!data || !Array.isArray(data.balance_infos)) {
-    body.innerHTML = '<p class="deepseek-balance">$0.00</p>';
-    return;
-  }
-  const info = data.balance_infos[0] || {};
-  const total = info.total_balance || "0";
-  body.innerHTML = `<p class="deepseek-balance">$${total}</p>`;
-}
-
-function renderOllamaUsage(status) {
-  const body = document.getElementById("ollamaUsageBody");
-  if (!body) return;
-  if (!status.running) {
-    body.innerHTML = `<p>Not running: ${status.error || "Ollama unreachable"}</p>`;
-    return;
-  }
-  body.innerHTML = `
-    <p>Models loaded: ${status.modelCount}</p>
-    <p>${status.models.join(", ") || "none"}</p>
-  `;
-}
-
 async function refreshLlmUsage() {
   const refreshBtn = document.getElementById("llmUsageRefreshBtn");
   if (refreshBtn) refreshBtn.disabled = true;
   setLlmUsageStatus("Refreshing...");
 
   try {
-    const openaiData = await fetchLlmUsageFromWorker("openai");
-    renderOpenaiUsage(openaiData);
-  } catch (error) {
-    document.getElementById("openaiUsageBody").innerHTML = `<p>Error: ${error.message}</p>`;
-  }
-
-  try {
     const deepseekData = await fetchLlmUsageFromWorker("deepseek");
     renderDeepseekUsage(deepseekData);
   } catch (error) {
     document.getElementById("deepseekUsageBody").innerHTML = `<p>Error: ${error.message}</p>`;
-  }
-
-  try {
-    const ollamaStatus = await fetchOllamaUsage();
-    renderOllamaUsage(ollamaStatus);
-  } catch (error) {
-    document.getElementById("ollamaUsageBody").innerHTML = `<p>Error: ${error.message}</p>`;
   }
 
   setLlmUsageStatus("Done.");
