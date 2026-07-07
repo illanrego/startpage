@@ -3399,6 +3399,7 @@ legend {
 }
 
 .llm-usage-card h4 {
+  color: black;
   margin: 0 0 4px 0;
   font-size: 13px;
   font-weight: bold;
