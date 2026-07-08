@@ -4905,6 +4905,7 @@ window.onload = function () {
   draggable("workoutContainer");
   draggable("nextFeatures");
   draggable("chatContainer");
+  draggable("clickupContainer");
   draggable("kanbanContainer");
   draggable("financeContainer");
   draggable("connectionsContainer");
@@ -4920,6 +4921,10 @@ window.onload = function () {
   });
   makeResizable("chatContainer", {
     minWidth: 320,
+    minHeight: 320,
+  });
+  makeResizable("clickupContainer", {
+    minWidth: 420,
     minHeight: 320,
   });
 };

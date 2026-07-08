@@ -1968,21 +1968,26 @@ legend {
 
 #clickupContainer {
   width: min(94vw, 920px);
+  height: min(72vh, 620px);
+  min-width: 420px;
   min-height: 420px;
   max-height: 82vh;
   top: 90px;
   left: 180px;
   padding: 5px;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 #clickupPanel {
   display: flex;
   flex-direction: column;
-  min-height: 380px;
-  max-height: calc(82vh - 38px);
+  height: calc(100% - 34px);
+  min-height: 0;
   padding: 8px;
   background: #c0c0c0;
   color: #000000;
+  box-sizing: border-box;
 }
 
 #clickupToolbar {
@@ -2024,7 +2029,7 @@ legend {
 
 #clickupTaskList {
   flex: 1;
-  min-height: 260px;
+  min-height: 0;
   overflow-y: auto;
   list-style: none;
   margin: 0;
