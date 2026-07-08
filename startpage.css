@@ -1959,6 +1959,155 @@ legend {
   right: 30px;
 }
 
+#clickupIconDiv {
+  position: absolute;
+  top: 400px;
+  right: 30px;
+  z-index: 0;
+}
+
+#clickupContainer {
+  width: min(94vw, 920px);
+  min-height: 420px;
+  max-height: 82vh;
+  top: 90px;
+  left: 180px;
+  padding: 5px;
+}
+
+#clickupPanel {
+  display: flex;
+  flex-direction: column;
+  min-height: 380px;
+  max-height: calc(82vh - 38px);
+  padding: 8px;
+  background: #c0c0c0;
+  color: #000000;
+}
+
+#clickupToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+#clickupToolbar button,
+#clickupToolbar select {
+  min-height: 26px;
+}
+
+#clickupToolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 26px;
+  padding: 0 6px;
+  color: #000000;
+  font-size: 13px;
+}
+
+#clickupPageLabel {
+  min-width: 58px;
+  color: #000000;
+  font-size: 13px;
+  text-align: center;
+}
+
+#clickupSyncStatus {
+  min-height: 18px;
+  margin: 0 0 6px;
+  color: #000000;
+  font-size: 13px;
+}
+
+#clickupTaskList {
+  flex: 1;
+  min-height: 260px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  border: 2px inset #d4d0c8;
+  background: #ffffff;
+}
+
+.clickup-task-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  gap: 8px;
+  align-items: center;
+  min-height: 48px;
+  padding: 6px;
+  border-bottom: 1px solid #b8b8b8;
+  color: #000000;
+}
+
+.clickup-task-row:last-child {
+  border-bottom: 0;
+}
+
+.clickup-task-main {
+  min-width: 0;
+}
+
+.clickup-task-title {
+  display: block;
+  color: #000080;
+  font-size: 14px;
+  line-height: 1.35;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.clickup-task-title:hover {
+  text-decoration: underline;
+}
+
+.clickup-task-meta {
+  margin-top: 4px;
+  color: #333333;
+  font-size: 12px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.clickup-status-cell {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+.clickup-status-pill {
+  display: block;
+  min-height: 18px;
+  padding: 2px 6px;
+  border: 1px solid #555555;
+  color: #ffffff;
+  background: #666666;
+  font-size: 12px;
+  line-height: 1.2;
+  text-shadow: 1px 1px #000000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clickup-status-select {
+  width: 100%;
+  min-height: 24px;
+  color: #000000;
+  background: #ffffff;
+}
+
+.clickup-empty-row {
+  min-height: 42px;
+  padding: 10px;
+  color: #000000;
+  font-size: 13px;
+}
+
 #kanbanContainer {
   min-width: 800px;
   max-width: 1200px;
@@ -3057,6 +3206,28 @@ legend {
 
   .ideas-add-row input {
     font-size: 16px;
+  }
+
+  /* ----- CLICKUP ----- */
+  #clickupContainer {
+    width: 100vw !important;
+    min-width: 0 !important;
+    max-width: 100vw !important;
+    max-height: none !important;
+  }
+
+  #clickupPanel {
+    min-height: 320px;
+    max-height: none;
+  }
+
+  .clickup-task-row {
+    grid-template-columns: 1fr;
+  }
+
+  .clickup-status-cell {
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 180px);
+    align-items: center;
   }
 
   /* ----- POMODORO ----- */

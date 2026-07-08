@@ -1027,6 +1027,34 @@ function buildConnectionRows() {
     ].filter(Boolean),
   });
 
+  const clickup = integrationRemoteState.integrations.clickup;
+  const clickupMeta = clickup?.metadata || {};
+  const clickupDisabledReason = !workerAuthConfigured
+    ? "Sign in to Supabase first"
+    : clickupMeta.lastError
+      ? String(clickupMeta.lastError)
+      : "ClickUp proxy unavailable";
+  const clickupErrorReason = clickupMeta.lastError
+    ? String(clickupMeta.lastError)
+    : "Unknown ClickUp proxy error";
+  rows.push({
+    key: "clickup",
+    name: "ClickUp",
+    status: clickup?.status || (workerAuthConfigured ? "active" : "disabled"),
+    detail: clickup?.status || (workerAuthConfigured ? "authenticated proxy" : "signed out"),
+    details: [
+      `Proxy URL: ${clickupMeta.proxyBaseUrl || getWorkerProxyBaseUrl()}`,
+      `Worker auth: ${workerAuthConfigured ? "Supabase session" : "signed out"}`,
+      "Provider token: stored in Worker",
+      clickupMeta.listName ? `List: ${clickupMeta.listName}` : "",
+      clickupMeta.lastTaskCount !== undefined ? `Last tasks: ${clickupMeta.lastTaskCount}` : "",
+      `Last action: ${clickupMeta.lastAction || "none"}`,
+      `Last check: ${formatConnectionDate(clickupMeta.lastCheckedAt) || "never"}`,
+      clickup?.status === "disabled" ? `Disabled reason: ${clickupDisabledReason}` : "",
+      clickup?.status === "error" ? `Error: ${clickupErrorReason}` : "",
+    ].filter(Boolean),
+  });
+
   const openai = integrationRemoteState.integrations.openai;
   const openaiMeta = openai?.metadata || {};
   const chatProxyConfigured = workerAuthConfigured;
@@ -1447,6 +1475,18 @@ async function syncConfiguredIntegrationsState() {
       usesSupabaseAuth: true,
       skillDailyMapConfigured:
         typeof HABITICA_SKILL_DAILY_MAP === "object" && Boolean(HABITICA_SKILL_DAILY_MAP),
+    },
+  });
+
+  const clickupMetadata = getIntegrationMetadata("clickup");
+  await upsertBackendIntegration("clickup", {
+    status: workerAuthConfigured ? "active" : "disabled",
+    metadata: {
+      ...clickupMetadata,
+      configured: workerAuthConfigured,
+      directClient: false,
+      proxyBaseUrl: getWorkerProxyBaseUrl(),
+      usesSupabaseAuth: true,
     },
   });
 
@@ -6201,6 +6241,10 @@ function getHabiticaProxyBaseUrl() {
   return LOCAL_HABITICA_PROXY_DEFAULT;
 }
 
+function getWorkerProxyBaseUrl() {
+  return getHabiticaProxyBaseUrl();
+}
+
 function setHabiticaSyncStatus(message) {
   const status = document.getElementById("habiticaSyncStatus");
   if (!status) return;
@@ -8276,6 +8320,397 @@ document.addEventListener("DOMContentLoaded", function () {
       mutations.forEach(function (mutation) {
         if (mutation.target.style.display !== "none") {
           refreshLlmUsage();
+        }
+      });
+    });
+    observer.observe(container, { attributes: true, attributeFilter: ["style"] });
+  }
+});
+
+// CLICKUP TASKS
+const clickupState = {
+  loaded: false,
+  loading: false,
+  page: 0,
+  includeClosed: false,
+  mineOnly: true,
+  list: null,
+  statuses: [],
+  statusesByList: {},
+  tasks: [],
+  lastPage: true,
+};
+
+function setClickupSyncStatus(message) {
+  const status = document.getElementById("clickupSyncStatus");
+  if (status) status.textContent = message;
+}
+
+function normalizeClickupStatus(status) {
+  if (!status || typeof status !== "object") return null;
+  const name =
+    typeof status.status === "string"
+      ? status.status
+      : typeof status.name === "string"
+        ? status.name
+        : "";
+  const cleanName = name.trim();
+  if (!cleanName) return null;
+  return {
+    id: typeof status.id === "string" ? status.id : cleanName,
+    name: cleanName,
+    color: typeof status.color === "string" ? status.color : "",
+    type: typeof status.type === "string" ? status.type : "",
+  };
+}
+
+function normalizeClickupTask(task) {
+  if (!task || typeof task !== "object") return null;
+  const id = typeof task.id === "string" ? task.id : "";
+  const name = typeof task.name === "string" ? task.name.trim() : "";
+  if (!id || !name) return null;
+  const status = normalizeClickupStatus(task.status) || {
+    id: "unknown",
+    name: "unknown",
+    color: "",
+    type: "",
+  };
+  return {
+    id,
+    name,
+    status,
+    dueDate: typeof task.dueDate === "string" ? task.dueDate : "",
+    updatedAt: typeof task.updatedAt === "string" ? task.updatedAt : "",
+    url: typeof task.url === "string" ? task.url : "",
+    listId: typeof task.listId === "string" ? task.listId : "",
+    listName: typeof task.listName === "string" ? task.listName : "",
+    assignees: Array.isArray(task.assignees)
+      ? task.assignees.filter((name) => typeof name === "string" && name.trim())
+      : [],
+  };
+}
+
+function updateClickupPaginationControls() {
+  const pageLabel = document.getElementById("clickupPageLabel");
+  const prevBtn = document.getElementById("clickupPrevPageBtn");
+  const nextBtn = document.getElementById("clickupNextPageBtn");
+  if (pageLabel) pageLabel.textContent = `page ${clickupState.page + 1}`;
+  if (prevBtn) prevBtn.disabled = clickupState.loading || clickupState.page <= 0;
+  if (nextBtn) nextBtn.disabled = clickupState.loading || clickupState.lastPage;
+}
+
+function formatClickupDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString();
+}
+
+async function fetchClickupWorkerJson(path, options = {}) {
+  const baseUrl = getWorkerProxyBaseUrl();
+  const authorizationHeaders = await getWorkerAuthorizationHeaders();
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers: {
+      "content-type": "application/json",
+      ...authorizationHeaders,
+      ...(options.headers || {}),
+    },
+  });
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch (_error) {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    const errMsg =
+      payload && typeof payload.error === "string"
+        ? payload.error
+        : payload && typeof payload.message === "string"
+          ? payload.message
+          : `HTTP ${response.status}`;
+    const error = new Error(errMsg);
+    error.code = payload?.code || "";
+    error.hint = payload?.hint || "";
+    throw error;
+  }
+
+  return payload || {};
+}
+
+async function fetchClickupListFromWorker() {
+  const payload = await fetchClickupWorkerJson("/api/clickup/list", { method: "GET" });
+  const statuses = Array.isArray(payload.statuses)
+    ? payload.statuses.map(normalizeClickupStatus).filter(Boolean)
+    : [];
+  return {
+    list: payload.list && typeof payload.list === "object" ? payload.list : null,
+    statuses,
+  };
+}
+
+async function fetchClickupTasksFromWorker() {
+  const query = new URLSearchParams({
+    page: String(clickupState.page),
+    includeClosed: clickupState.includeClosed ? "true" : "false",
+    mine: clickupState.mineOnly ? "true" : "false",
+  });
+  const payload = await fetchClickupWorkerJson(`/api/clickup/tasks?${query.toString()}`, {
+    method: "GET",
+  });
+  const tasks = Array.isArray(payload.tasks)
+    ? payload.tasks.map(normalizeClickupTask).filter(Boolean)
+    : [];
+  return {
+    tasks,
+    lastPage: Boolean(payload.lastPage),
+    page: typeof payload.page === "number" ? payload.page : clickupState.page,
+    list: payload.list && typeof payload.list === "object" ? payload.list : null,
+    statuses: Array.isArray(payload.statuses)
+      ? payload.statuses.map(normalizeClickupStatus).filter(Boolean)
+      : [],
+    statusesByList:
+      payload.statusesByList && typeof payload.statusesByList === "object"
+        ? Object.fromEntries(
+            Object.entries(payload.statusesByList).map(([listId, statuses]) => [
+              listId,
+              Array.isArray(statuses)
+                ? statuses.map(normalizeClickupStatus).filter(Boolean)
+                : [],
+            ]),
+          )
+        : {},
+  };
+}
+
+async function updateClickupTaskStatus(taskId, status) {
+  const payload = await fetchClickupWorkerJson(
+    `/api/clickup/tasks/${encodeURIComponent(taskId)}/status`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ status }),
+    },
+  );
+  return normalizeClickupTask(payload.task);
+}
+
+function renderClickupTaskList() {
+  const list = document.getElementById("clickupTaskList");
+  if (!list) return;
+  list.innerHTML = "";
+
+  if (clickupState.loading && clickupState.tasks.length === 0) {
+    const li = document.createElement("li");
+    li.className = "clickup-empty-row";
+    li.textContent = "Loading ClickUp tasks...";
+    list.appendChild(li);
+    return;
+  }
+
+  if (clickupState.loaded && clickupState.tasks.length === 0) {
+    const li = document.createElement("li");
+    li.className = "clickup-empty-row";
+    li.textContent = "No ClickUp tasks on this page.";
+    list.appendChild(li);
+    return;
+  }
+
+  clickupState.tasks.forEach((task) => {
+    const li = document.createElement("li");
+    li.className = "clickup-task-row";
+    li.dataset.taskId = task.id;
+
+    const main = document.createElement("div");
+    main.className = "clickup-task-main";
+
+    const title = document.createElement(task.url ? "a" : "span");
+    title.className = "clickup-task-title";
+    title.textContent = task.name;
+    if (task.url) {
+      title.href = task.url;
+      title.target = "_blank";
+      title.rel = "noopener noreferrer";
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "clickup-task-meta";
+    const metaItems = [
+      task.assignees.length ? task.assignees.join(", ") : "",
+      task.listName ? task.listName : "",
+      task.dueDate ? `due ${formatClickupDate(task.dueDate)}` : "",
+      task.updatedAt ? `updated ${formatClickupDate(task.updatedAt)}` : "",
+    ].filter(Boolean);
+    meta.textContent = metaItems.join(" · ");
+
+    main.appendChild(title);
+    if (meta.textContent) main.appendChild(meta);
+
+    const statusWrap = document.createElement("div");
+    statusWrap.className = "clickup-status-cell";
+
+    const pill = document.createElement("span");
+    pill.className = "clickup-status-pill";
+    pill.textContent = task.status.name;
+    if (task.status.color) pill.style.backgroundColor = task.status.color;
+
+    const select = document.createElement("select");
+    select.className = "clickup-status-select";
+    select.setAttribute("aria-label", `Status for ${task.name}`);
+    const statusOptions = clickupState.statusesByList[task.listId] || clickupState.statuses;
+    statusOptions.forEach((status) => {
+      const option = document.createElement("option");
+      option.value = status.name;
+      option.textContent = status.name;
+      if (status.name.toLowerCase() === task.status.name.toLowerCase()) option.selected = true;
+      select.appendChild(option);
+    });
+    if (!select.value) {
+      const option = document.createElement("option");
+      option.value = task.status.name;
+      option.textContent = task.status.name;
+      option.selected = true;
+      select.appendChild(option);
+    }
+    select.addEventListener("change", function () {
+      void handleClickupStatusChange(task.id, select.value);
+    });
+
+    statusWrap.appendChild(pill);
+    statusWrap.appendChild(select);
+    li.appendChild(main);
+    li.appendChild(statusWrap);
+    list.appendChild(li);
+  });
+}
+
+async function refreshClickupTasks() {
+  const refreshBtn = document.getElementById("clickupRefreshBtn");
+  if (refreshBtn) refreshBtn.disabled = true;
+  clickupState.loading = true;
+  updateClickupPaginationControls();
+  setClickupSyncStatus("Syncing ClickUp...");
+  renderClickupTaskList();
+
+  try {
+    const taskResult = await fetchClickupTasksFromWorker();
+    clickupState.tasks = taskResult.tasks;
+    clickupState.page = taskResult.page;
+    clickupState.lastPage = taskResult.lastPage;
+    clickupState.list = taskResult.list;
+    clickupState.statuses = taskResult.statuses;
+    clickupState.statusesByList = taskResult.statusesByList;
+    clickupState.loaded = true;
+    setClickupSyncStatus(`Synced ${clickupState.tasks.length} ClickUp task(s).`);
+    void recordIntegrationStatus("clickup", "active", {
+      lastAction: "sync_tasks",
+      lastTaskCount: clickupState.tasks.length,
+      listName: clickupState.list?.name || "",
+      mineOnly: clickupState.mineOnly,
+      proxyBaseUrl: getWorkerProxyBaseUrl(),
+      lastError: "",
+    });
+  } catch (error) {
+    console.error("ClickUp sync error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    setClickupSyncStatus(`ClickUp sync failed: ${message}`);
+    void recordIntegrationStatus("clickup", "error", {
+      lastAction: "sync_tasks",
+      lastError: message,
+      lastErrorCode: error?.code || "",
+    });
+  } finally {
+    clickupState.loading = false;
+    if (refreshBtn) refreshBtn.disabled = false;
+    updateClickupPaginationControls();
+    renderClickupTaskList();
+  }
+}
+
+async function handleClickupStatusChange(taskId, nextStatus) {
+  const row = Array.from(document.querySelectorAll(".clickup-task-row")).find(
+    (item) => item.dataset.taskId === taskId,
+  );
+  const select = row?.querySelector(".clickup-status-select");
+  const taskIndex = clickupState.tasks.findIndex((task) => task.id === taskId);
+  if (taskIndex < 0 || !nextStatus) return;
+  const previousTask = clickupState.tasks[taskIndex];
+  if (select) select.disabled = true;
+  setClickupSyncStatus(`Updating ${previousTask.name}...`);
+
+  try {
+    const updatedTask = await updateClickupTaskStatus(taskId, nextStatus);
+    if (updatedTask) clickupState.tasks[taskIndex] = updatedTask;
+    setClickupSyncStatus(`Updated ${previousTask.name}.`);
+    void recordIntegrationStatus("clickup", "active", {
+      lastAction: "update_status",
+      lastTaskId: taskId,
+      lastStatus: nextStatus,
+      lastError: "",
+    });
+  } catch (error) {
+    console.error("ClickUp status update error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    setClickupSyncStatus(`Status update failed: ${message}`);
+    void recordIntegrationStatus("clickup", "error", {
+      lastAction: "update_status",
+      lastTaskId: taskId,
+      lastError: message,
+      lastErrorCode: error?.code || "",
+    });
+  } finally {
+    if (select) select.disabled = false;
+    renderClickupTaskList();
+  }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  const refreshBtn = document.getElementById("clickupRefreshBtn");
+  const includeClosedToggle = document.getElementById("clickupIncludeClosedToggle");
+  const mineToggle = document.getElementById("clickupMineToggle");
+  const prevBtn = document.getElementById("clickupPrevPageBtn");
+  const nextBtn = document.getElementById("clickupNextPageBtn");
+
+  if (refreshBtn) refreshBtn.addEventListener("click", refreshClickupTasks);
+  if (mineToggle) mineToggle.checked = clickupState.mineOnly;
+  if (includeClosedToggle) {
+    includeClosedToggle.addEventListener("change", function () {
+      clickupState.includeClosed = Boolean(includeClosedToggle.checked);
+      clickupState.page = 0;
+      void refreshClickupTasks();
+    });
+  }
+  if (mineToggle) {
+    mineToggle.addEventListener("change", function () {
+      clickupState.mineOnly = Boolean(mineToggle.checked);
+      clickupState.page = 0;
+      void refreshClickupTasks();
+    });
+  }
+  if (prevBtn) {
+    prevBtn.addEventListener("click", function () {
+      if (clickupState.page <= 0) return;
+      clickupState.page -= 1;
+      void refreshClickupTasks();
+    });
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener("click", function () {
+      if (clickupState.lastPage) return;
+      clickupState.page += 1;
+      void refreshClickupTasks();
+    });
+  }
+  updateClickupPaginationControls();
+
+  const container = document.getElementById("clickupContainer");
+  if (container) {
+    const observer = new MutationObserver(function (mutations) {
+      mutations.forEach(function (mutation) {
+        if (mutation.target.style.display !== "none" && !clickupState.loaded && !clickupState.loading) {
+          void refreshClickupTasks();
         }
       });
     });

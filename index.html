@@ -4,13 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>illan's hub</title>
-    <link rel="stylesheet" href="startpage.css?v=20260603-backend-panel" />
+    <link rel="stylesheet" href="startpage.css?v=20260708-clickup-wiring" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400&display=swap">
     <link rel="stylesheet" href="win98.ttf">
     <link rel="icon" href="./imagens/debianlogo.png">
     <script src="config.js?v=20260624-cloud-worker"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="startpage.js?v=20260701-ideas-habitica-sync" defer></script>
+    <script src="startpage.js?v=20260708-clickup-wiring" defer></script>
   </head>
   <body>
     <div id="bgContainer"  style="background-image: url('./imagens/windowsgreen.png')";>
@@ -53,6 +53,10 @@
  <div class="icon" id="kanbanIconDiv" onclick="hideQuadro('kanbanContainer')">
     <img src="./imagens/98icons/w98_notepad_file.ico" width="60">
     <label>Kanban</label>
+ </div>
+ <div class="icon" id="clickupIconDiv" onclick="hideQuadro('clickupContainer')">
+    <img src="./imagens/98icons/w98_appwizard_list.ico" width="60">
+    <label>ClickUp</label>
  </div>
  <div class="icon" id="financeIconDiv" onclick="hideQuadro('financeContainer')">
     <img src="./imagens/98icons/w98_calculator.ico" width="60">
@@ -506,6 +510,30 @@
   </div>
 </div>
 <!-- KANBAN -->
+<div class="quadros" id="clickupContainer" style="display: none">
+  <div class="titleBar">
+    <h2>ClickUp Tasks</h2>
+    <button onclick="hideQuadro('clickupContainer')">x</button>
+  </div>
+  <div id="clickupPanel">
+    <div id="clickupToolbar">
+      <button id="clickupRefreshBtn" type="button">sync</button>
+      <label for="clickupIncludeClosedToggle">
+        <input type="checkbox" id="clickupIncludeClosedToggle">
+        closed
+      </label>
+      <label for="clickupMineToggle">
+        <input type="checkbox" id="clickupMineToggle">
+        mine
+      </label>
+      <button id="clickupPrevPageBtn" type="button">prev</button>
+      <span id="clickupPageLabel">page 1</span>
+      <button id="clickupNextPageBtn" type="button">next</button>
+    </div>
+    <p id="clickupSyncStatus">Ready.</p>
+    <ul id="clickupTaskList"></ul>
+  </div>
+</div>
 <div class="quadros" id="kanbanContainer" style="display: none">
   <div class="titleBar">
     <h2>Kanban Board</h2>
