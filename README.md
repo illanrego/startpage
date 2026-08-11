@@ -1,4 +1,7 @@
 # Startpage - Hub Pessoal com Estilo Retro OS 🎮
+
+![Startpage — retro OS hub](docs/screenshot.png)
+
 ![js vanilla](https://img.shields.io/badge/JS%20(vanilla)-3251CC)
 ![HTML](https://img.shields.io/badge/HTML-108022)
 ![CSS](https://img.shields.io/badge/CSS-802233)
