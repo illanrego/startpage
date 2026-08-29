@@ -8006,6 +8006,16 @@ async function sendChatMessage() {
     return;
   }
 
+  const providerSystem = {
+    role: "system",
+    content:
+      "You are Illan's startpage assistant. You have the last 30 days of his skill-tracker " +
+      "data below (DD/MM from the hub's gamify board). Answer his questions about that " +
+      "data honestly, using only what is shown. fitness letters = training cycle (A-F); " +
+      "standup = count 0-3; others 'done' = completed that day.\n\n" +
+      buildStartpageChatContext(),
+  };
+
   if (!hasWorkerAuthSession()) {
     appendMessage(
       "assistant",
@@ -8037,7 +8047,7 @@ async function sendChatMessage() {
       },
       body: JSON.stringify({
         provider,
-        messages,
+        messages: [providerSystem, ...messages],
         temperature: 0.3,
       }),
     });
