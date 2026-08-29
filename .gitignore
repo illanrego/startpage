@@ -6,3 +6,6 @@ dhammapada.sh
 scrape.js
 verse.json
 package-lock.json
+startpage-chat/.env
+startpage-chat/.data.json
+startpage-chat/__pycache__/
