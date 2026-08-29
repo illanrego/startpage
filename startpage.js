@@ -7851,7 +7851,12 @@ let messages = [
   },
 ];
 
-const OLLAMA_BASE_URL = "http://localhost:11434";
+// Local Ollama is reached via the startpage-chat bridge (127.0.0.1:11435),
+// which adds Access-Control-Allow-Private-Network so this https page can call it
+// (Chrome's Private Network Access). The bridge proxies to Ollama on 11434.
+// Bridge runs as the `startpage-chat-bridge` systemd user service; see
+// startpage-chat/bridge.py.
+const OLLAMA_BASE_URL = "http://127.0.0.1:11435";
 const LOCAL_LLAMA_MODEL = "llama3.2:3b";
 
 const CHAT_ASSISTANT_PROVIDERS = {
@@ -8085,6 +8090,44 @@ async function sendChatMessage() {
   }
 }
 
+function buildStartpageChatContext() {
+  // Reads the hub's own gamify board state (localStorage) for the last 30 days
+  // and packs it compactly so the local llama can answer from the user's data
+  // without the site touching Supabase for this.
+  const skills = [
+    { code: "coding", label: "Coding" },
+    { code: "content", label: "Content" },
+    { code: "fitness", label: "Physique" },
+    { code: "standup", label: "Stand Up" },
+    { code: "meditation", label: "Meditation" },
+  ];
+  const today = new Date();
+  const out = [];
+  for (const { code, label } of skills) {
+    const days = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+      const snap = getBoardStateSnapshot(code, d.getFullYear(), d.getMonth());
+      const raw = snap[d.getDate()];
+      if (raw == null || raw === "") continue;
+      const key =
+        String(d.getDate()).padStart(2, "0") +
+        "/" +
+        String(d.getMonth() + 1).padStart(2, "0");
+      let val = "done";
+      if (code === "fitness") {
+        const t = fitnessTrainingFromValue(raw);
+        val = t ? t : "done";
+      } else if (code === "standup") {
+        val = String(Math.max(0, Math.min(3, Number(raw) || 0)));
+      }
+      days.push(`${key}:${val}`);
+    }
+    out.push(`skill:${code} (${label}): ${days.join(", ") || "no data last 30d"}`);
+  }
+  return out.join("\n");
+}
+
 async function sendChatMessageLocal(providerConfig) {
   const modelStatus = await getOllamaModelStatus(providerConfig.model);
   if (!modelStatus.running) {
@@ -8128,12 +8171,25 @@ async function sendChatMessageLocal(providerConfig) {
   appendMessage("assistant", "...");
 
   try {
+    const dataContext = buildStartpageChatContext();
+    const llamaMessages = [
+      {
+        role: "system",
+        content:
+          "You are Illan's startpage assistant. You have the last 30 days of his skill-tracker " +
+          "data below (DD/MM from the hub's gamify board). Answer his questions about that " +
+          "data honestly, using only what is shown. fitness letters = training cycle (A-F); " +
+          "standup = count 0-3; others 'done' = completed that day.\n\n" +
+          dataContext,
+      },
+      ...messages.map(({ role, content }) => ({ role, content })),
+    ];
     const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: providerConfig.model,
-        messages: messages.map(({ role, content }) => ({ role, content })),
+        messages: llamaMessages,
         stream: false,
       }),
     });
