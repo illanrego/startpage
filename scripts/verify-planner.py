@@ -27,6 +27,13 @@ def test_planner_html_surface() -> None:
         'id="plannerWeeklyBlocksInput"',
         'id="plannerSendTodaySelect"',
         'id="plannerSendTodayBtn"',
+        'id="plannerSprintTitleInput"',
+        'id="plannerSprintFocusInput"',
+        'id="plannerSprintPlannedInput"',
+        'id="plannerSprintResultInput"',
+        'id="plannerSprintNotesInput"',
+        'id="plannerCloseSprintBtn"',
+        'id="plannerSprintLog"',
         ">Planner<",
     ]:
         require(html, needle, "index.html")
@@ -44,6 +51,11 @@ def test_planner_logic_hooks() -> None:
         "async function loadPlannerBackendState()",
         "async function savePlanner()",
         "function renderPlanner()",
+        "function renderPlannerSprintLog(",
+        "function closePlannerSprint(",
+        "function defaultPlannerSprint(",
+        "activeSprint",
+        "sprintLog",
         "function sendPlannerBlockToToday()",
         'plannerRemoteState.loaded = false',
         'from("planner_plans")',
@@ -61,6 +73,9 @@ def test_planner_styles() -> None:
         ".planner-lane-card",
         ".planner-status-card",
         ".planner-form-grid",
+        ".planner-sprint-grid",
+        ".planner-sprint-log",
+        ".planner-sprint-log-item",
     ]:
         require(css, needle, "startpage.css")
 
@@ -71,6 +86,7 @@ def test_planner_migration() -> None:
         "create table if not exists public.planner_plans",
         "milestones jsonb not null default '[]'::jsonb",
         "weekly_blocks jsonb not null default '[]'::jsonb",
+        "sprints jsonb not null",
         "status text not null default 'active'",
         "enable row level security",
         "planner_plans_all_own",

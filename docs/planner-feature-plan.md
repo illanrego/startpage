@@ -21,7 +21,7 @@ is active, and what weekly blocks keep it moving?"
 It does not replace To-do, Kanban, Calendar, ClickUp, or Gamify. It links the strategic decision to
 execution.
 
-## V1 scope
+## V1/V2 scope
 
 - Add a Windows-98 style Planner app/window to Startpage.
 - Persist a single active plan locally and in Supabase when signed in.
@@ -37,6 +37,10 @@ execution.
   - milestones
   - weekly blocks
   - next review date
+- Add an active sprint/week inside the horizon:
+  - sprint title, start/end dates, focus, planned outcomes, result, notes
+  - close sprint button marks it done and moves it into a visible Sprint Log
+  - the next sprint starts from carry-over work instead of erasing history
 - Allow inline editing through plain text inputs/textareas and one Save button.
 - Provide a small "send to today" affordance that copies one selected weekly block into the To-do
   input instead of creating tasks automatically. No Habitica write from Planner V1.
@@ -66,7 +70,7 @@ Fields:
 - `hedge_lane`
 - `floor_lane`
 - `milestones jsonb`
-- `weekly_blocks jsonb`
+- `sprints jsonb` (active sprint + closed sprint log)
 - `review_on`
 - `status` (`active`, `archived`)
 - timestamps

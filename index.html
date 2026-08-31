@@ -267,6 +267,36 @@
               <textarea id="plannerWeeklyBlocksInput" rows="6"></textarea>
             </div>
           </div>
+          <div class="planner-sprint-grid">
+            <div class="planner-lane-card">
+              <h3>Active sprint</h3>
+              <label for="plannerSprintTitleInput">Sprint title</label>
+              <input type="text" id="plannerSprintTitleInput" placeholder="Week 1 — Farming start">
+              <div class="planner-sprint-dates">
+                <div>
+                  <label for="plannerSprintStartInput">Start</label>
+                  <input type="date" id="plannerSprintStartInput">
+                </div>
+                <div>
+                  <label for="plannerSprintEndInput">End</label>
+                  <input type="date" id="plannerSprintEndInput">
+                </div>
+              </div>
+              <label for="plannerSprintFocusInput">Focus</label>
+              <textarea id="plannerSprintFocusInput" rows="3"></textarea>
+              <label for="plannerSprintPlannedInput">Planned outcomes (one per line)</label>
+              <textarea id="plannerSprintPlannedInput" rows="4"></textarea>
+              <label for="plannerSprintResultInput">Result</label>
+              <textarea id="plannerSprintResultInput" rows="3" placeholder="What actually happened?"></textarea>
+              <label for="plannerSprintNotesInput">Notes / carry-over</label>
+              <textarea id="plannerSprintNotesInput" rows="3" placeholder="What carries into next sprint?"></textarea>
+              <button id="plannerCloseSprintBtn" type="button" onclick="closePlannerSprint()">close sprint → log</button>
+            </div>
+            <div class="planner-lane-card">
+              <h3>Sprint log</h3>
+              <ul id="plannerSprintLog" class="planner-sprint-log"></ul>
+            </div>
+          </div>
           <div id="plannerToolbar">
             <button id="plannerSaveBtn" type="button" onclick="savePlanner()">save</button>
             <select id="plannerSendTodaySelect" aria-label="Planner block to send to today"></select>

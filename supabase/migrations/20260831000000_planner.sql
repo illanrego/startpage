@@ -13,6 +13,7 @@ create table if not exists public.planner_plans (
   floor_lane text not null,
   milestones jsonb not null default '[]'::jsonb,
   weekly_blocks jsonb not null default '[]'::jsonb,
+  sprints jsonb not null default '{"activeSprint": null, "sprintLog": []}'::jsonb,
   review_on date,
   status text not null default 'active' check (status in ('active', 'archived')),
   created_at timestamptz not null default now(),
@@ -25,6 +26,7 @@ create table if not exists public.planner_plans (
   constraint planner_plans_date_order check (ends_on >= starts_on),
   constraint planner_plans_milestones_array check (jsonb_typeof(milestones) = 'array'),
   constraint planner_plans_weekly_blocks_array check (jsonb_typeof(weekly_blocks) = 'array'),
+  constraint planner_plans_sprints_object check (jsonb_typeof(sprints) = 'object'),
   unique (user_id, id),
   unique (user_id, status)
 );

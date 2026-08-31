@@ -8805,6 +8805,8 @@ const plannerRemoteState = {
   loaded: false,
   plan: null,
 };
+const PLANNER_SELECT_FIELDS =
+  "id, title, starts_on, ends_on, summary, primary_lane, hedge_lane, floor_lane, milestones, weekly_blocks, sprints, review_on, status, created_at, updated_at";
 
 function makePlannerLineList(value) {
   if (Array.isArray(value)) {
@@ -8824,6 +8826,84 @@ function makePlannerLineList(value) {
 
 function plannerLinesToText(lines) {
   return makePlannerLineList(lines).join("\n");
+}
+
+function defaultPlannerSprint() {
+  return {
+    title: "Week 1 — Farming start",
+    startsOn: "2026-08-31",
+    endsOn: "2026-09-07",
+    focus: "Start the farming window with one visible paid-work close and one recordable course/content move.",
+    planned: [
+      "Close or move one White Castle slice",
+      "Prepare/record one course or Canal do Illan block",
+      "Define the next week's course recording target",
+    ],
+    result: "",
+    notes: "",
+    closedAt: "",
+  };
+}
+
+function normalizePlannerSprint(rawSprint) {
+  const fallback = defaultPlannerSprint();
+  const source = rawSprint && typeof rawSprint === "object" ? rawSprint : {};
+  return {
+    title: String(source.title || fallback.title).trim() || fallback.title,
+    startsOn: normalizePlannerDate(source.startsOn || source.starts_on, fallback.startsOn),
+    endsOn: normalizePlannerDate(source.endsOn || source.ends_on, fallback.endsOn),
+    focus: String(source.focus || fallback.focus).trim() || fallback.focus,
+    planned: makePlannerLineList(source.planned).length
+      ? makePlannerLineList(source.planned)
+      : fallback.planned,
+    result: String(source.result || "").trim(),
+    notes: String(source.notes || "").trim(),
+    closedAt: typeof source.closedAt === "string" ? source.closedAt : source.closed_at || "",
+  };
+}
+
+function normalizePlannerSprintLog(value) {
+  return Array.isArray(value)
+    ? value.map(normalizePlannerSprint).filter((sprint) => sprint.closedAt)
+    : [];
+}
+
+function normalizePlannerSprints(value) {
+  const source = value && typeof value === "object" ? value : {};
+  return {
+    activeSprint: normalizePlannerSprint(source.activeSprint || source.active_sprint),
+    sprintLog: normalizePlannerSprintLog(source.sprintLog || source.sprint_log),
+  };
+}
+
+function plannerSprintsToDb(activeSprint, sprintLog) {
+  return {
+    activeSprint: normalizePlannerSprint(activeSprint),
+    sprintLog: normalizePlannerSprintLog(sprintLog),
+  };
+}
+
+function nextPlannerSprintFromClosedSprint(closedSprint) {
+  const base = closedSprint.endsOn || new Date().toISOString().slice(0, 10);
+  const startDate = new Date(`${base}T00:00:00`);
+  const endDate = new Date(`${base}T00:00:00`);
+  if (!Number.isNaN(startDate.getTime())) startDate.setDate(startDate.getDate() + 1);
+  if (!Number.isNaN(endDate.getTime())) endDate.setDate(endDate.getDate() + 7);
+  const nextStart = Number.isNaN(startDate.getTime()) ? "" : startDate.toISOString().slice(0, 10);
+  const nextEnd = Number.isNaN(endDate.getTime()) ? "" : endDate.toISOString().slice(0, 10);
+  return normalizePlannerSprint({
+    ...defaultPlannerSprint(),
+    title: "Next sprint",
+    startsOn: nextStart,
+    endsOn: nextEnd,
+    focus: closedSprint.notes || "Carry forward the most important unfinished outcome.",
+    planned: makePlannerLineList(closedSprint.notes).length
+      ? makePlannerLineList(closedSprint.notes)
+      : ["Pick the next highest-leverage farming-window outcome"],
+    result: "",
+    notes: "",
+    closedAt: "",
+  });
 }
 
 function defaultPlannerState() {
@@ -8850,6 +8930,8 @@ function defaultPlannerState() {
       "Move one Hotseller/portfolio-proof slice",
       "Review income-risk trigger and next week's focus",
     ],
+    activeSprint: defaultPlannerSprint(),
+    sprintLog: [],
     reviewOn: "2026-09-07",
     status: "active",
     updatedAt: new Date().toISOString(),
@@ -8863,6 +8945,11 @@ function normalizePlannerDate(value, fallback) {
 function normalizePlannerState(rawState) {
   const fallback = defaultPlannerState();
   const source = rawState && typeof rawState === "object" ? rawState : {};
+  const sprints = normalizePlannerSprints({
+    activeSprint: source.activeSprint || source.active_sprint,
+    sprintLog: source.sprintLog || source.sprint_log,
+    ...(source.sprints && typeof source.sprints === "object" ? source.sprints : {}),
+  });
   return {
     id: typeof source.id === "string" ? source.id : "",
     title: String(source.title || fallback.title).trim() || fallback.title,
@@ -8878,6 +8965,8 @@ function normalizePlannerState(rawState) {
     weeklyBlocks: makePlannerLineList(source.weeklyBlocks || source.weekly_blocks).length
       ? makePlannerLineList(source.weeklyBlocks || source.weekly_blocks)
       : fallback.weeklyBlocks,
+    activeSprint: sprints.activeSprint,
+    sprintLog: sprints.sprintLog,
     reviewOn: normalizePlannerDate(source.reviewOn || source.review_on, fallback.reviewOn),
     status: source.status === "archived" ? "archived" : "active",
     updatedAt:
@@ -8899,6 +8988,7 @@ function plannerRowToState(row) {
     floorLane: row.floor_lane,
     milestones: row.milestones,
     weeklyBlocks: row.weekly_blocks,
+    sprints: row.sprints,
     reviewOn: row.review_on,
     status: row.status,
     updatedAt: row.updated_at || row.created_at,
@@ -8918,6 +9008,7 @@ function plannerStateToDbPayload(plan, userId) {
     floor_lane: normalized.floorLane,
     milestones: normalized.milestones,
     weekly_blocks: normalized.weeklyBlocks,
+    sprints: plannerSprintsToDb(normalized.activeSprint, normalized.sprintLog),
     review_on: normalized.reviewOn,
     status: normalized.status,
   };
@@ -8972,6 +9063,16 @@ function readPlannerFormState() {
     floorLane: byId("plannerFloorInput")?.value,
     milestones: byId("plannerMilestonesInput")?.value,
     weeklyBlocks: byId("plannerWeeklyBlocksInput")?.value,
+    activeSprint: {
+      title: byId("plannerSprintTitleInput")?.value,
+      startsOn: byId("plannerSprintStartInput")?.value,
+      endsOn: byId("plannerSprintEndInput")?.value,
+      focus: byId("plannerSprintFocusInput")?.value,
+      planned: byId("plannerSprintPlannedInput")?.value,
+      result: byId("plannerSprintResultInput")?.value,
+      notes: byId("plannerSprintNotesInput")?.value,
+      closedAt: "",
+    },
     reviewOn: byId("plannerReviewInput")?.value,
     updatedAt: new Date().toISOString(),
   });
@@ -8994,6 +9095,37 @@ function renderPlannerSendOptions(plan) {
   });
 }
 
+function renderPlannerSprintLog(plan) {
+  const list = document.getElementById("plannerSprintLog");
+  if (!list) return;
+  list.innerHTML = "";
+  const sprintLog = normalizePlannerSprintLog(plan.sprintLog);
+  if (sprintLog.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "planner-sprint-log-item planner-sprint-log-item--empty";
+    empty.textContent = "No closed sprints yet.";
+    list.appendChild(empty);
+    return;
+  }
+  sprintLog
+    .slice()
+    .reverse()
+    .forEach((sprint) => {
+      const item = document.createElement("li");
+      item.className = "planner-sprint-log-item";
+      const title = document.createElement("strong");
+      title.textContent = `${sprint.title} (${sprint.startsOn} → ${sprint.endsOn})`;
+      const result = document.createElement("p");
+      result.textContent = sprint.result || "No result note.";
+      const notes = document.createElement("small");
+      notes.textContent = sprint.notes ? `Carry-over: ${sprint.notes}` : "No carry-over.";
+      item.appendChild(title);
+      item.appendChild(result);
+      item.appendChild(notes);
+      list.appendChild(item);
+    });
+}
+
 function renderPlanner() {
   const plan = getPlannerState();
   const assign = (id, value) => {
@@ -9010,7 +9142,15 @@ function renderPlanner() {
   assign("plannerFloorInput", plan.floorLane);
   assign("plannerMilestonesInput", plannerLinesToText(plan.milestones));
   assign("plannerWeeklyBlocksInput", plannerLinesToText(plan.weeklyBlocks));
+  assign("plannerSprintTitleInput", plan.activeSprint.title);
+  assign("plannerSprintStartInput", plan.activeSprint.startsOn);
+  assign("plannerSprintEndInput", plan.activeSprint.endsOn);
+  assign("plannerSprintFocusInput", plan.activeSprint.focus);
+  assign("plannerSprintPlannedInput", plannerLinesToText(plan.activeSprint.planned));
+  assign("plannerSprintResultInput", plan.activeSprint.result);
+  assign("plannerSprintNotesInput", plan.activeSprint.notes);
   renderPlannerSendOptions(plan);
+  renderPlannerSprintLog(plan);
 }
 
 async function loadPlannerBackendState() {
@@ -9020,29 +9160,36 @@ async function loadPlannerBackendState() {
     return;
   }
 
-  let row = throwIfSupabaseError(
-    await backendState.client
-      .from("planner_plans")
-      .select("id, title, starts_on, ends_on, summary, primary_lane, hedge_lane, floor_lane, milestones, weekly_blocks, review_on, status, created_at, updated_at")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle(),
-  );
-
-  if (!row) {
-    row = throwIfSupabaseError(
+  try {
+    let row = throwIfSupabaseError(
       await backendState.client
         .from("planner_plans")
-        .insert(plannerStateToDbPayload(getLocalPlannerState(), userId))
-        .select("id, title, starts_on, ends_on, summary, primary_lane, hedge_lane, floor_lane, milestones, weekly_blocks, review_on, status, created_at, updated_at")
-        .single(),
+        .select(PLANNER_SELECT_FIELDS)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle(),
     );
-  }
 
-  plannerRemoteState.plan = plannerRowToState(row);
-  plannerRemoteState.loaded = true;
+    if (!row) {
+      row = throwIfSupabaseError(
+        await backendState.client
+          .from("planner_plans")
+          .insert(plannerStateToDbPayload(getLocalPlannerState(), userId))
+          .select(PLANNER_SELECT_FIELDS)
+          .single(),
+      );
+    }
+
+    plannerRemoteState.plan = plannerRowToState(row);
+    plannerRemoteState.loaded = true;
+  } catch (error) {
+    console.error("Planner backend load error:", error);
+    plannerRemoteState.loaded = false;
+    plannerRemoteState.plan = null;
+    setPlannerSyncStatus("Planner backend unavailable; using local plan.");
+  }
 }
 
 async function importPlannerLocalDataOnce() {
@@ -9050,14 +9197,20 @@ async function importPlannerLocalDataOnce() {
   const userId = getBackendUserId();
   if (!backendState.client || !userId) return;
   const localPlan = getLocalPlannerState();
-  throwIfSupabaseError(
-    await backendState.client
-      .from("planner_plans")
-      .upsert(plannerStateToDbPayload(localPlan, userId), { onConflict: "user_id,status" })
-      .select("id")
-      .single(),
-  );
-  markBackendImportCompleted(PLANNER_IMPORT_SCOPE);
+  try {
+    throwIfSupabaseError(
+      await backendState.client
+        .from("planner_plans")
+        .upsert(plannerStateToDbPayload(localPlan, userId), { onConflict: "user_id,status" })
+        .select("id")
+        .single(),
+    );
+    markBackendImportCompleted(PLANNER_IMPORT_SCOPE);
+  } catch (error) {
+    console.error("Planner local import error:", error);
+    plannerRemoteState.loaded = false;
+    setPlannerSyncStatus("Planner backend unavailable; local plan kept.");
+  }
 }
 
 async function savePlanner() {
@@ -9075,7 +9228,7 @@ async function savePlanner() {
             },
             { onConflict: plan.id ? "id" : "user_id,status" },
           )
-          .select("id, title, starts_on, ends_on, summary, primary_lane, hedge_lane, floor_lane, milestones, weekly_blocks, review_on, status, created_at, updated_at")
+          .select(PLANNER_SELECT_FIELDS)
           .single(),
       );
       plannerRemoteState.plan = plannerRowToState(row);
@@ -9091,6 +9244,29 @@ async function savePlanner() {
     setPlannerSyncStatus("Saved locally.");
   }
   renderPlanner();
+}
+
+async function closePlannerSprint() {
+  const plan = readPlannerFormState();
+  const closedSprint = normalizePlannerSprint({
+    ...plan.activeSprint,
+    result: plan.activeSprint.result || "Closed without a result note.",
+    closedAt: new Date().toISOString(),
+  });
+  const nextPlan = normalizePlannerState({
+    ...plan,
+    sprintLog: [...normalizePlannerSprintLog(plan.sprintLog), closedSprint],
+    activeSprint: nextPlannerSprintFromClosedSprint(closedSprint),
+    updatedAt: new Date().toISOString(),
+  });
+  setPlannerState(nextPlan);
+  renderPlanner();
+  setPlannerSyncStatus("Sprint closed into log. Review/edit the next sprint, then save.");
+  if (isPlannerBackendActive()) {
+    await savePlanner();
+  } else {
+    setLocalPlannerState(nextPlan);
+  }
 }
 
 function sendPlannerBlockToToday() {

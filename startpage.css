@@ -3641,7 +3641,8 @@ legend {
 
 .planner-status-card,
 .planner-form-grid,
-.planner-lanes {
+.planner-lanes,
+.planner-sprint-grid {
   display: grid;
   gap: 8px;
   margin-bottom: 10px;
@@ -3653,6 +3654,51 @@ legend {
 
 .planner-form-grid {
   grid-template-columns: 1fr 1fr;
+}
+
+.planner-sprint-grid {
+  grid-template-columns: minmax(280px, 1.1fr) minmax(220px, 0.9fr);
+}
+
+.planner-sprint-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.planner-sprint-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planner-sprint-log-item {
+  display: block;
+  border: 2px inset #fff;
+  background: #fff;
+  padding: 7px;
+  color: #000;
+}
+
+.planner-sprint-log-item p,
+.planner-sprint-log-item small {
+  display: block;
+  text-align: left;
+  margin: 4px 0 0;
+  color: #000;
+}
+
+.planner-sprint-log-item--empty {
+  color: #555;
+}
+
+#plannerCloseSprintBtn {
+  margin-top: 8px;
 }
 
 .planner-lanes {
@@ -3694,6 +3740,8 @@ legend {
   .planner-status-card,
   .planner-form-grid,
   .planner-lanes,
+  .planner-sprint-grid,
+  .planner-sprint-dates,
   #plannerToolbar {
     grid-template-columns: 1fr;
   }
