@@ -66,6 +66,10 @@
      <img src="./imagens/98icons/w98_notepad.ico" width="60">
      <label>Ideas</label>
   </div>
+  <div class="icon" id="plannerIconDiv" onclick="hideQuadro('plannerContainer')">
+     <img src="./imagens/98icons/w98_notepad_file.ico" width="60">
+     <label>Planner</label>
+  </div>
   <div class="icon" id="connectionsIconDiv" onclick="hideQuadro('connectionsContainer')">
      <img src="./imagens/98icons/w98_web_file.ico" width="60">
      <label>system</label>
@@ -210,6 +214,65 @@
           </div>
           <p id="todoSyncStatus">Ready.</p>
           <ul id="taskList"></ul>
+        </div>
+      </div>
+<!-- PLANNER -->
+      <div id="plannerContainer" class="quadros" style="display: none">
+        <div class="titleBar">
+          <h2>Planner</h2>
+          <button onclick="hideQuadro('plannerContainer')">x</button>
+        </div>
+        <div id="plannerPanel">
+          <div class="planner-status-card">
+            <div>
+              <label for="plannerTitleInput">Plan</label>
+              <input type="text" id="plannerTitleInput" placeholder="Plan title">
+            </div>
+            <div>
+              <label for="plannerStartInput">Start</label>
+              <input type="date" id="plannerStartInput">
+            </div>
+            <div>
+              <label for="plannerEndInput">End</label>
+              <input type="date" id="plannerEndInput">
+            </div>
+            <div>
+              <label for="plannerReviewInput">Next review</label>
+              <input type="date" id="plannerReviewInput">
+            </div>
+          </div>
+          <label for="plannerSummaryInput">Strategy summary</label>
+          <textarea id="plannerSummaryInput" rows="3" placeholder="What is this horizon about?"></textarea>
+          <div class="planner-lanes">
+            <div class="planner-lane-card">
+              <label for="plannerPrimaryInput">Primary</label>
+              <textarea id="plannerPrimaryInput" rows="3"></textarea>
+            </div>
+            <div class="planner-lane-card">
+              <label for="plannerHedgeInput">Hedge</label>
+              <textarea id="plannerHedgeInput" rows="3"></textarea>
+            </div>
+            <div class="planner-lane-card">
+              <label for="plannerFloorInput">Floor</label>
+              <textarea id="plannerFloorInput" rows="3"></textarea>
+            </div>
+          </div>
+          <div class="planner-form-grid">
+            <div>
+              <label for="plannerMilestonesInput">Milestones (one per line)</label>
+              <textarea id="plannerMilestonesInput" rows="6"></textarea>
+            </div>
+            <div>
+              <label for="plannerWeeklyBlocksInput">Weekly blocks (one per line)</label>
+              <textarea id="plannerWeeklyBlocksInput" rows="6"></textarea>
+            </div>
+          </div>
+          <div id="plannerToolbar">
+            <button id="plannerSaveBtn" type="button" onclick="savePlanner()">save</button>
+            <select id="plannerSendTodaySelect" aria-label="Planner block to send to today"></select>
+            <button id="plannerSendTodayBtn" type="button" onclick="sendPlannerBlockToToday()">send to today</button>
+            <span id="plannerSyncStatus">Ready.</span>
+          </div>
         </div>
       </div>
 <!-- REC LIST -->
@@ -714,6 +777,7 @@
             <li onclick="hideQuadro('chatContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_message_file.ico" width="35" height="35">Chat Assistant</li>
             <li onclick="hideQuadro('financeContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_calculator.ico" width="35" height="35">Finance Log</li>
             <li onclick="hideQuadro('ideasContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_notepad.ico" width="35" height="35">Ideas</li>
+            <li onclick="hideQuadro('plannerContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_notepad_file.ico" width="35" height="35">Planner</li>
             <li onclick="hideQuadro('connectionsContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_web_file.ico" width="35" height="35">Connections</li>
             <li onclick="hideQuadro('llmUsageContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_chip_ramdrive.ico" width="35" height="35">LLM Usage</li>
             <li onclick="hideQuadro('nextFeatures'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_tools_gear.ico" width="35" height="35">Next Features</li>

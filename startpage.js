@@ -970,6 +970,7 @@ function moduleScopeLabel(scope) {
     calendar_notes_v1: "Calendar",
     workout_v1: "Workout",
     lists_v1: "Lists",
+    planner_v1: "Planner",
   };
   return labels[scope] || scope;
 }
@@ -1624,6 +1625,10 @@ async function refreshBackendModules(options = {}) {
   await loadListsBackendState();
   renderSimpleLists();
 
+  if (shouldImportLocal) await importPlannerLocalDataOnce();
+  await loadPlannerBackendState();
+  renderPlanner();
+
   if (shouldImportLocal) await importFinanceLocalDataOnce();
   await loadFinanceRecurringState();
   await refreshFinanceBackendState();
@@ -1643,6 +1648,7 @@ async function handleBackendSession(session) {
     calendarRemoteState.loaded = false;
     workoutRemoteState.loaded = false;
     listRemoteState.loaded = false;
+    plannerRemoteState.loaded = false;
     integrationRemoteState.loaded = false;
     setBackendAuthStatus("Backend: Supabase ready; sign in to sync modules");
     renderFinanceList();
@@ -1652,6 +1658,7 @@ async function handleBackendSession(session) {
     generateCalendar();
     renderWorkout();
     renderSimpleLists();
+    renderPlanner();
     renderConnectionsStatus();
     return;
   }
@@ -1670,6 +1677,7 @@ async function handleBackendSession(session) {
     calendarRemoteState.loaded = false;
     workoutRemoteState.loaded = false;
     listRemoteState.loaded = false;
+    plannerRemoteState.loaded = false;
     integrationRemoteState.loaded = false;
     setBackendAuthStatus(`Backend: ${describeBackendError(error)}; using local data`);
     renderFinanceList();
@@ -1679,6 +1687,7 @@ async function handleBackendSession(session) {
     generateCalendar();
     renderWorkout();
     renderSimpleLists();
+    renderPlanner();
     renderConnectionsStatus();
   }
 }
@@ -8787,6 +8796,315 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     observer.observe(container, { attributes: true, attributeFilter: ["style"] });
   }
+});
+
+// PLANNER
+const PLANNER_STORAGE_KEY = "plannerState";
+const PLANNER_IMPORT_SCOPE = "planner_v1";
+const plannerRemoteState = {
+  loaded: false,
+  plan: null,
+};
+
+function makePlannerLineList(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (typeof item === "string" ? item : item?.text || item?.title || ""))
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function plannerLinesToText(lines) {
+  return makePlannerLineList(lines).join("\n");
+}
+
+function defaultPlannerState() {
+  return {
+    id: "",
+    title: "Farming Window — Nerd/Comedy Lane",
+    startsOn: "2026-08-31",
+    endsOn: "2026-10-31",
+    summary:
+      "Use the current income-stable window to farm the nerd/comedy lane: course anchor, content, gigs, and products. Keep dev warm as portfolio fuel; job-hunt immediately if income drops, otherwise before year-end.",
+    primaryLane: "Course re-record + Canal do Illan / IG momentum + gigs. Recording is the bottleneck.",
+    hedgeLane: "Dev stays warm through Hotseller/White Castle and portfolio-ready product proof.",
+    floorLane: "Comics Legendados pipeline + minimal IG/ticket presence, with pix/support floor early.",
+    milestones: [
+      "Aula 3 script ready",
+      "First three lessons recorded",
+      "Pix/support CTA visible",
+      "Game/course launch path connected through Links page",
+      "Job-hunt review before year-end or immediately if income drops",
+    ],
+    weeklyBlocks: [
+      "Record one course/content block",
+      "Publish or prepare one Canal do Illan / IG output",
+      "Move one Hotseller/portfolio-proof slice",
+      "Review income-risk trigger and next week's focus",
+    ],
+    reviewOn: "2026-09-07",
+    status: "active",
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function normalizePlannerDate(value, fallback) {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : fallback;
+}
+
+function normalizePlannerState(rawState) {
+  const fallback = defaultPlannerState();
+  const source = rawState && typeof rawState === "object" ? rawState : {};
+  return {
+    id: typeof source.id === "string" ? source.id : "",
+    title: String(source.title || fallback.title).trim() || fallback.title,
+    startsOn: normalizePlannerDate(source.startsOn || source.starts_on, fallback.startsOn),
+    endsOn: normalizePlannerDate(source.endsOn || source.ends_on, fallback.endsOn),
+    summary: String(source.summary || fallback.summary).trim() || fallback.summary,
+    primaryLane: String(source.primaryLane || source.primary_lane || fallback.primaryLane).trim(),
+    hedgeLane: String(source.hedgeLane || source.hedge_lane || fallback.hedgeLane).trim(),
+    floorLane: String(source.floorLane || source.floor_lane || fallback.floorLane).trim(),
+    milestones: makePlannerLineList(source.milestones).length
+      ? makePlannerLineList(source.milestones)
+      : fallback.milestones,
+    weeklyBlocks: makePlannerLineList(source.weeklyBlocks || source.weekly_blocks).length
+      ? makePlannerLineList(source.weeklyBlocks || source.weekly_blocks)
+      : fallback.weeklyBlocks,
+    reviewOn: normalizePlannerDate(source.reviewOn || source.review_on, fallback.reviewOn),
+    status: source.status === "archived" ? "archived" : "active",
+    updatedAt:
+      typeof source.updatedAt === "string" && source.updatedAt
+        ? source.updatedAt
+        : new Date().toISOString(),
+  };
+}
+
+function plannerRowToState(row) {
+  return normalizePlannerState({
+    id: row.id,
+    title: row.title,
+    startsOn: row.starts_on,
+    endsOn: row.ends_on,
+    summary: row.summary,
+    primaryLane: row.primary_lane,
+    hedgeLane: row.hedge_lane,
+    floorLane: row.floor_lane,
+    milestones: row.milestones,
+    weeklyBlocks: row.weekly_blocks,
+    reviewOn: row.review_on,
+    status: row.status,
+    updatedAt: row.updated_at || row.created_at,
+  });
+}
+
+function plannerStateToDbPayload(plan, userId) {
+  const normalized = normalizePlannerState(plan);
+  return {
+    user_id: userId,
+    title: normalized.title,
+    starts_on: normalized.startsOn,
+    ends_on: normalized.endsOn,
+    summary: normalized.summary,
+    primary_lane: normalized.primaryLane,
+    hedge_lane: normalized.hedgeLane,
+    floor_lane: normalized.floorLane,
+    milestones: normalized.milestones,
+    weekly_blocks: normalized.weeklyBlocks,
+    review_on: normalized.reviewOn,
+    status: normalized.status,
+  };
+}
+
+function isPlannerBackendActive() {
+  return Boolean(backendState.client && backendState.session && plannerRemoteState.loaded);
+}
+
+function getLocalPlannerState() {
+  let parsed = null;
+  try {
+    parsed = JSON.parse(localStorage.getItem(PLANNER_STORAGE_KEY));
+  } catch (_error) {
+    parsed = null;
+  }
+  const state = normalizePlannerState(parsed);
+  localStorage.setItem(PLANNER_STORAGE_KEY, JSON.stringify(state));
+  return state;
+}
+
+function setLocalPlannerState(plan) {
+  localStorage.setItem(PLANNER_STORAGE_KEY, JSON.stringify(normalizePlannerState(plan)));
+}
+
+function getPlannerState() {
+  return isPlannerBackendActive() && plannerRemoteState.plan
+    ? plannerRemoteState.plan
+    : getLocalPlannerState();
+}
+
+function setPlannerState(plan) {
+  const normalized = normalizePlannerState(plan);
+  if (isPlannerBackendActive()) {
+    plannerRemoteState.plan = normalized;
+    return;
+  }
+  setLocalPlannerState(normalized);
+}
+
+function readPlannerFormState() {
+  const current = getPlannerState();
+  const byId = (id) => document.getElementById(id);
+  return normalizePlannerState({
+    ...current,
+    title: byId("plannerTitleInput")?.value,
+    startsOn: byId("plannerStartInput")?.value,
+    endsOn: byId("plannerEndInput")?.value,
+    summary: byId("plannerSummaryInput")?.value,
+    primaryLane: byId("plannerPrimaryInput")?.value,
+    hedgeLane: byId("plannerHedgeInput")?.value,
+    floorLane: byId("plannerFloorInput")?.value,
+    milestones: byId("plannerMilestonesInput")?.value,
+    weeklyBlocks: byId("plannerWeeklyBlocksInput")?.value,
+    reviewOn: byId("plannerReviewInput")?.value,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+function setPlannerSyncStatus(message) {
+  const status = document.getElementById("plannerSyncStatus");
+  if (status) status.textContent = message;
+}
+
+function renderPlannerSendOptions(plan) {
+  const select = document.getElementById("plannerSendTodaySelect");
+  if (!select) return;
+  select.innerHTML = "";
+  makePlannerLineList(plan.weeklyBlocks).forEach((block, index) => {
+    const option = document.createElement("option");
+    option.value = block;
+    option.textContent = `${index + 1}. ${block}`;
+    select.appendChild(option);
+  });
+}
+
+function renderPlanner() {
+  const plan = getPlannerState();
+  const assign = (id, value) => {
+    const el = document.getElementById(id);
+    if (el && el.value !== value) el.value = value;
+  };
+  assign("plannerTitleInput", plan.title);
+  assign("plannerStartInput", plan.startsOn);
+  assign("plannerEndInput", plan.endsOn);
+  assign("plannerReviewInput", plan.reviewOn);
+  assign("plannerSummaryInput", plan.summary);
+  assign("plannerPrimaryInput", plan.primaryLane);
+  assign("plannerHedgeInput", plan.hedgeLane);
+  assign("plannerFloorInput", plan.floorLane);
+  assign("plannerMilestonesInput", plannerLinesToText(plan.milestones));
+  assign("plannerWeeklyBlocksInput", plannerLinesToText(plan.weeklyBlocks));
+  renderPlannerSendOptions(plan);
+}
+
+async function loadPlannerBackendState() {
+  const userId = getBackendUserId();
+  if (!backendState.client || !userId) {
+    plannerRemoteState.loaded = false;
+    return;
+  }
+
+  let row = throwIfSupabaseError(
+    await backendState.client
+      .from("planner_plans")
+      .select("id, title, starts_on, ends_on, summary, primary_lane, hedge_lane, floor_lane, milestones, weekly_blocks, review_on, status, created_at, updated_at")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  );
+
+  if (!row) {
+    row = throwIfSupabaseError(
+      await backendState.client
+        .from("planner_plans")
+        .insert(plannerStateToDbPayload(getLocalPlannerState(), userId))
+        .select("id, title, starts_on, ends_on, summary, primary_lane, hedge_lane, floor_lane, milestones, weekly_blocks, review_on, status, created_at, updated_at")
+        .single(),
+    );
+  }
+
+  plannerRemoteState.plan = plannerRowToState(row);
+  plannerRemoteState.loaded = true;
+}
+
+async function importPlannerLocalDataOnce() {
+  if (hasBackendImportCompleted(PLANNER_IMPORT_SCOPE)) return;
+  const userId = getBackendUserId();
+  if (!backendState.client || !userId) return;
+  const localPlan = getLocalPlannerState();
+  throwIfSupabaseError(
+    await backendState.client
+      .from("planner_plans")
+      .upsert(plannerStateToDbPayload(localPlan, userId), { onConflict: "user_id,status" })
+      .select("id")
+      .single(),
+  );
+  markBackendImportCompleted(PLANNER_IMPORT_SCOPE);
+}
+
+async function savePlanner() {
+  const plan = readPlannerFormState();
+  if (isPlannerBackendActive()) {
+    try {
+      const userId = getBackendUserId();
+      const row = throwIfSupabaseError(
+        await backendState.client
+          .from("planner_plans")
+          .upsert(
+            {
+              id: plan.id || undefined,
+              ...plannerStateToDbPayload(plan, userId),
+            },
+            { onConflict: plan.id ? "id" : "user_id,status" },
+          )
+          .select("id, title, starts_on, ends_on, summary, primary_lane, hedge_lane, floor_lane, milestones, weekly_blocks, review_on, status, created_at, updated_at")
+          .single(),
+      );
+      plannerRemoteState.plan = plannerRowToState(row);
+      setPlannerSyncStatus("Saved to backend.");
+    } catch (error) {
+      console.error("Planner DB save error:", error);
+      setLocalPlannerState(plan);
+      plannerRemoteState.plan = plan;
+      setPlannerSyncStatus(`Backend save failed; saved locally: ${describeBackendError(error)}`);
+    }
+  } else {
+    setLocalPlannerState(plan);
+    setPlannerSyncStatus("Saved locally.");
+  }
+  renderPlanner();
+}
+
+function sendPlannerBlockToToday() {
+  const select = document.getElementById("plannerSendTodaySelect");
+  const taskInput = document.getElementById("taskInput");
+  const text = select?.value?.trim();
+  if (!text || !taskInput) return;
+  taskInput.value = text;
+  hideQuadro("todoContainer");
+  setPlannerSyncStatus("Copied block into To-do input. Press + to create it.");
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  renderPlanner();
 });
 
 // KANBAN BOARD
