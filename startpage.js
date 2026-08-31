@@ -4916,6 +4916,7 @@ window.onload = function () {
   draggable("chatContainer");
   draggable("clickupContainer");
   draggable("kanbanContainer");
+  draggable("plannerContainer");
   draggable("financeContainer");
   draggable("connectionsContainer");
   draggable("llmUsageContainer");
@@ -4935,6 +4936,10 @@ window.onload = function () {
   makeResizable("clickupContainer", {
     minWidth: 420,
     minHeight: 320,
+  });
+  makeResizable("plannerContainer", {
+    minWidth: 520,
+    minHeight: 420,
   });
 };
 

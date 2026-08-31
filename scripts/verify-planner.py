@@ -60,6 +60,8 @@ def test_planner_logic_hooks() -> None:
         'plannerRemoteState.loaded = false',
         'from("planner_plans")',
         "renderPlanner();",
+        'draggable("plannerContainer");',
+        'makeResizable("plannerContainer",',
     ]:
         require(js, needle, "startpage.js")
 
