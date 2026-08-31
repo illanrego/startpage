@@ -3701,6 +3701,59 @@ legend {
   margin-top: 8px;
 }
 
+/* Planner milestones */
+.planner-milestone-block {
+  border: 2px outset #fff;
+  background: #d8d8d8;
+  padding: 7px;
+  margin-bottom: 10px;
+}
+
+.planner-milestone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planner-milestone-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 2px inset #fff;
+  background: #fff;
+  padding: 6px;
+  color: #000;
+  text-align: left;
+}
+
+.planner-milestone-item input[type="checkbox"] {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.planner-milestone-item span {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #000;
+}
+
+.planner-milestone-item--done span {
+  text-decoration: line-through;
+  color: #555;
+}
+
+.planner-milestone-add {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  margin-top: 8px;
+}
+
 .planner-lanes {
   grid-template-columns: repeat(3, 1fr);
 }

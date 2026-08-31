@@ -257,14 +257,12 @@
               <textarea id="plannerFloorInput" rows="3"></textarea>
             </div>
           </div>
-          <div class="planner-form-grid">
-            <div>
-              <label for="plannerMilestonesInput">Milestones (one per line)</label>
-              <textarea id="plannerMilestonesInput" rows="6"></textarea>
-            </div>
-            <div>
-              <label for="plannerWeeklyBlocksInput">Weekly blocks (one per line)</label>
-              <textarea id="plannerWeeklyBlocksInput" rows="6"></textarea>
+          <div class="planner-milestone-block">
+            <label>Milestones (plan goals — check as reached)</label>
+            <ul id="plannerMilestonesList" class="planner-milestone-list"></ul>
+            <div class="planner-milestone-add">
+              <input type="text" id="plannerMilestoneInput" placeholder="Add milestone">
+              <button id="plannerMilestoneAddBtn" type="button" onclick="addPlannerMilestone(true)">+</button>
             </div>
           </div>
           <div class="planner-sprint-grid">

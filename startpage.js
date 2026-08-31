@@ -8923,17 +8923,11 @@ function defaultPlannerState() {
     hedgeLane: "Dev stays warm through Hotseller/White Castle (Phase 1 close, catalogo, PDP) + portfolio-ready proof.",
     floorLane: "Comics Legendados pipeline + minimal IG/tickets, with pix/support CTA early.",
     milestones: [
-      "Course landing live + linked to Eduzz with pix/support CTA",
-      "Game shipped (deploy + smoke test + README)",
-      "Course + game launched together through the funnel",
-      "One Canal do Illan / IG output recorded and published per week",
-      "Farming-window review: job-hunt gate decision",
-    ],
-    weeklyBlocks: [
-      "Record one course/content block",
-      "Publish or prepare one Canal do Illan / IG output",
-      "Move one Hotseller/portfolio-proof slice (White Castle)",
-      "Review income-risk trigger and next week's focus",
+      { text: "Course landing live + linked to Eduzz with pix/support CTA", done: false },
+      { text: "Game shipped (deploy + smoke test + README)", done: false },
+      { text: "Course + game launched together through the funnel", done: false },
+      { text: "One Canal do Illan / IG output recorded and published per week", done: false },
+      { text: "Farming-window review: job-hunt gate decision", done: false },
     ],
     activeSprint: defaultPlannerSprint(),
     sprintLog: [],
@@ -8945,6 +8939,24 @@ function defaultPlannerState() {
 
 function normalizePlannerDate(value, fallback) {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : fallback;
+}
+
+function normalizePlannerMilestones(value, fallback) {
+  const list = Array.isArray(value)
+    ? value
+        .map((item) => {
+          const text =
+            typeof item === "string" ? item : item && typeof item === "object" ? item.text : "";
+          const trimmed = String(text || "").trim();
+          if (!trimmed) return null;
+          return {
+            text: trimmed,
+            done: Boolean(item && typeof item === "object" && item.done),
+          };
+        })
+        .filter(Boolean)
+    : [];
+  return list.length ? list : fallback;
 }
 
 function normalizePlannerState(rawState) {
@@ -8964,12 +8976,7 @@ function normalizePlannerState(rawState) {
     primaryLane: String(source.primaryLane || source.primary_lane || fallback.primaryLane).trim(),
     hedgeLane: String(source.hedgeLane || source.hedge_lane || fallback.hedgeLane).trim(),
     floorLane: String(source.floorLane || source.floor_lane || fallback.floorLane).trim(),
-    milestones: makePlannerLineList(source.milestones).length
-      ? makePlannerLineList(source.milestones)
-      : fallback.milestones,
-    weeklyBlocks: makePlannerLineList(source.weeklyBlocks || source.weekly_blocks).length
-      ? makePlannerLineList(source.weeklyBlocks || source.weekly_blocks)
-      : fallback.weeklyBlocks,
+    milestones: normalizePlannerMilestones(source.milestones, fallback.milestones),
     activeSprint: sprints.activeSprint,
     sprintLog: sprints.sprintLog,
     reviewOn: normalizePlannerDate(source.reviewOn || source.review_on, fallback.reviewOn),
@@ -8992,7 +8999,6 @@ function plannerRowToState(row) {
     hedgeLane: row.hedge_lane,
     floorLane: row.floor_lane,
     milestones: row.milestones,
-    weeklyBlocks: row.weekly_blocks,
     sprints: row.sprints,
     reviewOn: row.review_on,
     status: row.status,
@@ -9012,7 +9018,6 @@ function plannerStateToDbPayload(plan, userId) {
     hedge_lane: normalized.hedgeLane,
     floor_lane: normalized.floorLane,
     milestones: normalized.milestones,
-    weekly_blocks: normalized.weeklyBlocks,
     sprints: plannerSprintsToDb(normalized.activeSprint, normalized.sprintLog),
     review_on: normalized.reviewOn,
     status: normalized.status,
@@ -9066,8 +9071,7 @@ function readPlannerFormState() {
     primaryLane: byId("plannerPrimaryInput")?.value,
     hedgeLane: byId("plannerHedgeInput")?.value,
     floorLane: byId("plannerFloorInput")?.value,
-    milestones: byId("plannerMilestonesInput")?.value,
-    weeklyBlocks: byId("plannerWeeklyBlocksInput")?.value,
+    milestones: current.milestones,
     activeSprint: {
       title: byId("plannerSprintTitleInput")?.value,
       startsOn: byId("plannerSprintStartInput")?.value,
@@ -9092,12 +9096,85 @@ function renderPlannerSendOptions(plan) {
   const select = document.getElementById("plannerSendTodaySelect");
   if (!select) return;
   select.innerHTML = "";
-  makePlannerLineList(plan.weeklyBlocks).forEach((block, index) => {
+  makePlannerLineList(plan.activeSprint.planned).forEach((task, index) => {
     const option = document.createElement("option");
-    option.value = block;
-    option.textContent = `${index + 1}. ${block}`;
+    option.value = task;
+    option.textContent = `${index + 1}. ${task}`;
     select.appendChild(option);
   });
+}
+
+function createMilestoneElement(milestone, index) {
+  const li = document.createElement("li");
+  li.className = "planner-milestone-item";
+  if (milestone.done) li.classList.add("planner-milestone-item--done");
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = Boolean(milestone.done);
+  checkbox.setAttribute("aria-label", `Mark milestone done: ${milestone.text}`);
+  checkbox.addEventListener("change", function () {
+    togglePlannerMilestone(index);
+  });
+
+  const label = document.createElement("span");
+  label.textContent = milestone.text;
+
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.textContent = "x";
+  remove.setAttribute("aria-label", `Remove milestone: ${milestone.text}`);
+  remove.addEventListener("click", function () {
+    removePlannerMilestone(index);
+  });
+
+  li.appendChild(checkbox);
+  li.appendChild(label);
+  li.appendChild(remove);
+  return li;
+}
+
+function renderPlannerMilestones(plan) {
+  const list = document.getElementById("plannerMilestonesList");
+  if (!list) return;
+  list.innerHTML = "";
+  normalizePlannerMilestones(plan.milestones, []).forEach((milestone, index) => {
+    list.appendChild(createMilestoneElement(milestone, index));
+  });
+}
+
+function addPlannerMilestone() {
+  const input = document.getElementById("plannerMilestoneInput");
+  const plan = getPlannerState();
+  const text = input?.value?.trim();
+  if (!text) return;
+  plan.milestones = [...normalizePlannerMilestones(plan.milestones, []), { text, done: false }];
+  setPlannerState(normalizePlannerState(plan));
+  if (input) input.value = "";
+  renderPlanner();
+  void savePlanner();
+}
+
+function togglePlannerMilestone(index) {
+  const plan = getPlannerState();
+  const milestones = normalizePlannerMilestones(plan.milestones, []);
+  const milestone = milestones[index];
+  if (!milestone) return;
+  milestones[index] = { ...milestone, done: !milestone.done };
+  plan.milestones = milestones;
+  setPlannerState(normalizePlannerState(plan));
+  renderPlanner();
+  void savePlanner();
+}
+
+function removePlannerMilestone(index) {
+  const plan = getPlannerState();
+  plan.milestones = normalizePlannerMilestones(plan.milestones, []).filter(
+    (_m, i) => i !== index,
+  );
+  setPlannerState(normalizePlannerState(plan));
+  renderPlanner();
+  void savePlanner();
 }
 
 function renderPlannerSprintLog(plan) {
@@ -9145,8 +9222,6 @@ function renderPlanner() {
   assign("plannerPrimaryInput", plan.primaryLane);
   assign("plannerHedgeInput", plan.hedgeLane);
   assign("plannerFloorInput", plan.floorLane);
-  assign("plannerMilestonesInput", plannerLinesToText(plan.milestones));
-  assign("plannerWeeklyBlocksInput", plannerLinesToText(plan.weeklyBlocks));
   assign("plannerSprintTitleInput", plan.activeSprint.title);
   assign("plannerSprintStartInput", plan.activeSprint.startsOn);
   assign("plannerSprintEndInput", plan.activeSprint.endsOn);
@@ -9154,6 +9229,7 @@ function renderPlanner() {
   assign("plannerSprintPlannedInput", plannerLinesToText(plan.activeSprint.planned));
   assign("plannerSprintResultInput", plan.activeSprint.result);
   assign("plannerSprintNotesInput", plan.activeSprint.notes);
+  renderPlannerMilestones(plan);
   renderPlannerSendOptions(plan);
   renderPlannerSprintLog(plan);
 }

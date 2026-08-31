@@ -34,16 +34,17 @@ execution.
   - plan title and date range
   - strategy summary
   - lanes (Primary, Hedge, Floor)
-  - milestones
-  - weekly blocks
+  - milestones as **checkboxes** (whole-plan goals, tick as reached, persisted)
   - next review date
 - Add an active sprint/week inside the horizon:
-  - sprint title, start/end dates, focus, planned outcomes, result, notes
+  - sprint title, start/end dates, focus, weekly tasks (to-do suggestions, one per line), result, notes
   - close sprint button marks it done and moves it into a visible Sprint Log
   - the next sprint starts from carry-over work instead of erasing history
+- The plan's weekly-blocks list is intentionally REMOVED — the sprint's weekly-task list is the
+  single working layer (it feeds "send to today"). No separate plan-level task list.
 - Allow inline editing through plain text inputs/textareas and one Save button.
-- Provide a small "send to today" affordance that copies one selected weekly block into the To-do
-  input instead of creating tasks automatically. No Habitica write from Planner V1.
+- Provide a small "send to today" affordance that copies one selected sprint weekly task into the
+  To-do input instead of creating tasks automatically. No Habitica write from Planner V1.
 
 ## V1 boundaries
 
@@ -69,8 +70,8 @@ Fields:
 - `primary_lane`
 - `hedge_lane`
 - `floor_lane`
-- `milestones jsonb`
-- `sprints jsonb` (active sprint + closed sprint log)
+- `milestones jsonb` — array of `{ text, done }` (checkbox milestones)
+- `sprints jsonb` (active sprint + closed sprint log; sprint weekly tasks live on the active sprint)
 - `review_on`
 - `status` (`active`, `archived`)
 - timestamps
