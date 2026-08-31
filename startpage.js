@@ -8835,14 +8835,14 @@ function plannerLinesToText(lines) {
 
 function defaultPlannerSprint() {
   return {
-    title: "Week 1 — Farming start",
+    title: "Week 1 — set the funnel",
     startsOn: "2026-08-31",
     endsOn: "2026-09-07",
-    focus: "Start the farming window with one visible paid-work close and one recordable course/content move.",
+    focus: "Stand up the course funnel (landing + price + Eduzz + pix/support CTA), pick the first content recording, and close a White Castle slice.",
     planned: [
-      "Close or move one White Castle slice",
-      "Prepare/record one course or Canal do Illan block",
-      "Define the next week's course recording target",
+      "Course landing live + linked to Eduzz with pix/support CTA",
+      "First Canal do Illan recording topic chosen and recorded",
+      "Close White Castle Phase 1 (process the 4 testando cards)",
     ],
     result: "",
     notes: "",
@@ -8914,25 +8914,25 @@ function nextPlannerSprintFromClosedSprint(closedSprint) {
 function defaultPlannerState() {
   return {
     id: "",
-    title: "Farming Window — Nerd/Comedy Lane",
+    title: "Farming Window — Sell Existing Course + Content",
     startsOn: "2026-08-31",
-    endsOn: "2026-10-31",
+    endsOn: "2026-10-30",
     summary:
-      "Use the current income-stable window to farm the nerd/comedy lane: course anchor, content, gigs, and products. Keep dev warm as portfolio fuel; job-hunt immediately if income drops, otherwise before year-end.",
-    primaryLane: "Course re-record + Canal do Illan / IG momentum + gigs. Recording is the bottleneck.",
-    hedgeLane: "Dev stays warm through Hotseller/White Castle and portfolio-ready product proof.",
-    floorLane: "Comics Legendados pipeline + minimal IG/ticket presence, with pix/support floor early.",
+      "Sell the EXISTING course (content is too good to re-record). Launch it with the game, drive traffic with Canal do Illan + IG, keep dev warm as portfolio proof, and run legendados + pix/support as the floor. Job-hunt before year-end or immediately if income drops.",
+    primaryLane: "Course (polish price + landing + Eduzz funnel) + content (Canal do Illan / IG / gigs) + game launch. Recording feeds content only.",
+    hedgeLane: "Dev stays warm through Hotseller/White Castle (Phase 1 close, catalogo, PDP) + portfolio-ready proof.",
+    floorLane: "Comics Legendados pipeline + minimal IG/tickets, with pix/support CTA early.",
     milestones: [
-      "Aula 3 script ready",
-      "First three lessons recorded",
-      "Pix/support CTA visible",
-      "Game/course launch path connected through Links page",
-      "Job-hunt review before year-end or immediately if income drops",
+      "Course landing live + linked to Eduzz with pix/support CTA",
+      "Game shipped (deploy + smoke test + README)",
+      "Course + game launched together through the funnel",
+      "One Canal do Illan / IG output recorded and published per week",
+      "Farming-window review: job-hunt gate decision",
     ],
     weeklyBlocks: [
       "Record one course/content block",
       "Publish or prepare one Canal do Illan / IG output",
-      "Move one Hotseller/portfolio-proof slice",
+      "Move one Hotseller/portfolio-proof slice (White Castle)",
       "Review income-risk trigger and next week's focus",
     ],
     activeSprint: defaultPlannerSprint(),
