@@ -2563,20 +2563,34 @@ async function upsertFinanceOpeningBalance(state) {
   const userId = getBackendUserId();
   const normalized = normalizeFinanceOpeningBalanceState(state);
   if (!backendState.client || !userId || !normalized) throw new Error("Supabase session missing");
-  return throwIfSupabaseError(
-    await backendState.client
-      .from("finance_opening_balances")
-      .upsert(
-        {
-          user_id: userId,
-          amount: normalized.amount,
-          effective_on: normalized.effectiveOn,
-        },
-        { onConflict: "user_id" },
-      )
-      .select("user_id, amount, effective_on, created_at, updated_at")
-      .single(),
-  );
+  const result = await backendState.client
+    .from("finance_opening_balances")
+    .upsert(
+      {
+        user_id: userId,
+        amount: normalized.amount,
+        effective_on: normalized.effectiveOn,
+      },
+      { onConflict: "user_id" },
+    )
+    .select("user_id, amount, effective_on, created_at, updated_at")
+    .single();
+  // Supabase JS v2 can return { data: null, error: null } when an upsert
+  // resolves to an UPDATE under certain RLS paths. Re-query to guarantee
+  // the caller receives the actually-persisted row so cross-device state
+  // stays consistent.
+  if (result.error) throw result.error;
+  if (!result.data) {
+    const reQuery = throwIfSupabaseError(
+      await backendState.client
+        .from("finance_opening_balances")
+        .select("user_id, amount, effective_on, created_at, updated_at")
+        .eq("user_id", userId)
+        .maybeSingle(),
+    );
+    return reQuery;
+  }
+  return result.data;
 }
 
 function pickFinanceBudgetRow(rows) {
