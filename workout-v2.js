@@ -568,21 +568,96 @@ function workoutV2RenderEmptyLog() {
   </section>`;
 }
 
-function workoutV2RenderEntryRow(entry, index, completed, displayIndex = index) {
+function workoutV2ExerciseGroups(session) {
+  const groups = [];
+  (session?.entries || []).forEach((entry, index) => {
+    const name = String(entry.exerciseName || "");
+    const previous = groups[groups.length - 1];
+    if (!previous || previous.name !== name) {
+      groups.push({ name, startIndex: index, entries: [{ entry, index }] });
+    } else {
+      previous.entries.push({ entry, index });
+    }
+  });
+  return groups;
+}
+
+function workoutV2RenumberWorkingSets(session) {
+  workoutV2ExerciseGroups(session).forEach((group) => {
+    let workingSet = 0;
+    group.entries.forEach(({ entry }) => {
+      if (/^\d+$/.test(String(entry.setOrder || "")) || !entry.setOrder) {
+        workingSet += 1;
+        entry.setOrder = String(workingSet);
+      }
+    });
+  });
+  session.entries.forEach((entry, index) => { entry.entryOrder = index; });
+}
+
+function workoutV2SetType(setOrder) {
+  const value = String(setOrder || "");
+  if (value === "W") return "warmup";
+  if (value === "F") return "failure";
+  if (value === "D") return "drop";
+  if (value === "Note") return "note";
+  if (value === "Rest Timer") return "rest";
+  return "working";
+}
+
+function workoutV2SetTypeOptions(setOrder) {
+  const current = workoutV2SetType(setOrder);
+  return [
+    ["working", "Working"],
+    ["warmup", "Warm-up"],
+    ["failure", "Failure"],
+    ["drop", "Drop"],
+    ["note", "Note"],
+    ["rest", "Rest timer"],
+  ].map(([value, label]) => `<option value="${value}"${value === current ? " selected" : ""}>${label}</option>`).join("");
+}
+
+function workoutV2RenderSetRow(entry, index, completed, workingNumber) {
   const disabled = completed ? " disabled" : "";
   const numberInput = (field, value, attrs) => `<input type="number" data-entry-index="${index}" data-entry-field="${field}" value="${value == null ? "" : workoutV2Escape(value)}" ${attrs || ""}${disabled}>`;
+  const type = workoutV2SetType(entry.setOrder);
+  const setLabel = type === "working" ? String(workingNumber) : "—";
   return `<tr data-entry-id="${workoutV2Escape(entry.id)}">
-    <td>${displayIndex + 1}</td>
-    <td><input data-entry-index="${index}" data-entry-field="setOrder" value="${workoutV2Escape(entry.setOrder)}"${disabled}></td>
-    <td><input data-entry-index="${index}" data-entry-field="exerciseName" value="${workoutV2Escape(entry.exerciseName)}" list="workoutV2ExerciseNames"${disabled}></td>
+    <td class="workout-v2-set-number">${setLabel}</td>
+    <td><select data-entry-index="${index}" data-entry-field="setType"${disabled}>${workoutV2SetTypeOptions(entry.setOrder)}</select></td>
     <td>${numberInput("weightKg", entry.weightKg, 'min="0" step="0.01"')}</td>
     <td>${numberInput("reps", entry.reps, 'min="0" step="0.01"')}</td>
     <td>${numberInput("rpe", entry.rpe, 'min="0" max="10" step="0.5"')}</td>
     <td>${numberInput("distanceMeters", entry.distanceMeters, 'min="0" step="0.01"')}</td>
     <td>${numberInput("seconds", entry.seconds, 'min="0" step="0.01"')}</td>
-    <td><input data-entry-index="${index}" data-entry-field="notes" value="${workoutV2Escape(entry.notes)}"${disabled}></td>
-    <td><button type="button" data-action="remove-entry" data-index="${index}" aria-label="Remove entry"${disabled}>×</button></td>
+    <td><input class="workout-v2-set-notes" data-entry-index="${index}" data-entry-field="notes" value="${workoutV2Escape(entry.notes)}"${disabled}></td>
+    <td><button type="button" data-action="remove-entry" data-index="${index}" aria-label="Remove set" title="Remove set"${disabled}>Remove</button></td>
   </tr>`;
+}
+
+function workoutV2RenderExerciseGroup(group, groupOrder, completed) {
+  let workingNumber = 0;
+  const rows = group.entries.map(({ entry, index }) => {
+    if (workoutV2SetType(entry.setOrder) === "working") workingNumber += 1;
+    return workoutV2RenderSetRow(entry, index, completed, workingNumber);
+  }).join("");
+  const controls = completed ? "" : `<div class="workout-v2-exercise-actions">
+    <button type="button" data-action="move-exercise" data-start="${group.startIndex}" data-count="${group.entries.length}" data-direction="-1" title="Move exercise earlier">↑</button>
+    <button type="button" data-action="move-exercise" data-start="${group.startIndex}" data-count="${group.entries.length}" data-direction="1" title="Move exercise later">↓</button>
+    <button type="button" data-action="remove-exercise" data-start="${group.startIndex}" data-count="${group.entries.length}">Remove exercise</button>
+  </div>`;
+  return `<section class="workout-v2-exercise-group">
+    <div class="workout-v2-exercise-heading">
+      <span class="workout-v2-exercise-order">Exercise ${groupOrder + 1}</span>
+      <input class="workout-v2-exercise-name" data-exercise-name-start="${group.startIndex}" data-exercise-name-count="${group.entries.length}" value="${workoutV2Escape(group.name)}" list="workoutV2ExerciseNames" placeholder="Exercise name"${completed ? " disabled" : ""}>
+      ${controls}
+    </div>
+    <div class="workout-v2-table-wrap"><table class="workout-v2-table workout-v2-set-table">
+      <thead><tr><th>Set</th><th>Set type</th><th>Weight (kg)</th><th>Reps</th><th>RPE</th><th>Distance (m)</th><th>Seconds</th><th>Notes</th><th>Action</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    ${completed ? "" : `<button type="button" class="workout-v2-add-set" data-action="add-set" data-start="${group.startIndex}" data-count="${group.entries.length}">Add set</button>`}
+  </section>`;
 }
 
 function workoutV2ExerciseNames() {
@@ -596,25 +671,23 @@ function workoutV2RenderLog() {
   const session = workoutV2Session(workoutV2UiState.selectedSessionId);
   if (!session) return workoutV2RenderEmptyLog();
   const completed = session.status === "completed";
-  const entryPage = workoutV2Paginate(session.entries, "Log");
+  const groups = workoutV2ExerciseGroups(session);
+  const groupPage = workoutV2Paginate(groups, "Log");
   return `<section class="workout-v2-panel workout-v2-log">
-    <div class="workout-v2-panel-heading"><h3>Workout log</h3><span class="workout-v2-status workout-v2-status--${session.status}">${session.status}</span></div>
+    <div class="workout-v2-panel-heading"><h3>Workout log</h3><span class="workout-v2-status workout-v2-status--${session.status}">Status: ${session.status}</span></div>
     <div class="workout-v2-form-grid">
       <label>Date<input type="date" data-session-field="dateKey" value="${workoutV2Escape(session.dateKey)}"${completed ? " disabled" : ""}></label>
-      <label>Name<input data-session-field="workoutName" value="${workoutV2Escape(session.workoutName)}"${completed ? " disabled" : ""}></label>
+      <label class="workout-v2-wide-field">Workout name<input data-session-field="workoutName" value="${workoutV2Escape(session.workoutName)}"${completed ? " disabled" : ""}></label>
       <label>Routine<select data-session-field="routineCode"${completed ? " disabled" : ""}>${workoutV2RoutineOptions(session.routineCode, true)}</select></label>
-      <label>Status<input value="${workoutV2Escape(session.status)}" disabled></label>
       <label>Duration (seconds)<input type="number" min="0" step="1" data-session-field="durationSeconds" value="${session.durationSeconds == null ? "" : workoutV2Escape(session.durationSeconds)}"${completed ? " disabled" : ""}></label>
     </div>
-    <label class="workout-v2-block-label">Workout notes<textarea data-session-field="workoutNotes" rows="2"${completed ? " disabled" : ""}>${workoutV2Escape(session.workoutNotes)}</textarea></label>
-    <div class="workout-v2-table-wrap"><table class="workout-v2-table workout-v2-entry-table">
-      <thead><tr><th>#</th><th>Set order</th><th>Exercise</th><th>kg</th><th>Reps</th><th>RPE</th><th>Meters</th><th>Seconds</th><th>Notes</th><th></th></tr></thead>
-      <tbody>${entryPage.items.map((entry, index) => workoutV2RenderEntryRow(entry, entryPage.start + index, completed, entryPage.start + index)).join("")}</tbody>
-    </table></div>
-    ${workoutV2RenderPagination("Log", session.entries.length)}
+    <label class="workout-v2-block-label">Workout notes<textarea data-session-field="workoutNotes" rows="3"${completed ? " disabled" : ""}>${workoutV2Escape(session.workoutNotes)}</textarea></label>
+    <div class="workout-v2-section-title">Exercises — shown in the order performed</div>
+    <div class="workout-v2-exercise-list">${groupPage.items.map((group, index) => workoutV2RenderExerciseGroup(group, groupPage.start + index, completed)).join("") || '<div class="workout-v2-empty">No exercises yet. Add the first exercise below.</div>'}</div>
+    ${workoutV2RenderPagination("Log", groups.length)}
     <datalist id="workoutV2ExerciseNames">${workoutV2ExerciseNames().map((name) => `<option value="${workoutV2Escape(name)}"></option>`).join("")}</datalist>
     <div class="workout-v2-actions">
-      ${completed ? '<button type="button" data-action="reopen">Reopen workout</button>' : '<button type="button" data-action="add-entry">Add entry</button><button type="button" class="workout-v2-primary" data-action="finish">Finish workout</button>'}
+      ${completed ? '<button type="button" data-action="reopen">Reopen workout</button>' : '<button type="button" data-action="add-exercise">Add exercise</button><button type="button" class="workout-v2-primary" data-action="finish">Finish workout</button>'}
       <button type="button" class="workout-v2-danger" data-action="delete-session">Delete workout</button>
       <button type="button" data-action="close-session">Back</button>
     </div>
@@ -631,7 +704,7 @@ function workoutV2RenderTemplateRow(exercise, index) {
     <td>${numberInput("targetWeightKg", exercise.targetWeightKg, 'min="0" step="0.01"')}</td>
     <td>${numberInput("restSeconds", exercise.restSeconds, 'min="0" step="1"')}</td>
     <td><input data-template-index="${index}" data-template-field="notes" value="${workoutV2Escape(exercise.notes)}"></td>
-    <td><button type="button" data-action="remove-template-entry" data-index="${index}" aria-label="Remove template exercise">×</button></td>
+    <td><button type="button" data-action="remove-template-entry" data-index="${index}" aria-label="Remove template exercise">Remove</button></td>
   </tr>`;
 }
 
@@ -639,12 +712,13 @@ function workoutV2RenderTemplates() {
   const routine = workoutV2Routine(workoutV2UiState.templateCode);
   const exercisePage = workoutV2Paginate(routine.exercises, "Templates");
   return `<section class="workout-v2-panel">
+    <h3>Workout templates</h3>
     <div class="workout-v2-form-row">
       <label>Template<select id="workoutV2TemplateCode">${workoutV2RoutineOptions(routine.code, false)}</select></label>
       <label class="workout-v2-grow">Routine name<input data-routine-field="name" value="${workoutV2Escape(routine.name)}"></label>
     </div>
     <div class="workout-v2-table-wrap"><table class="workout-v2-table">
-      <thead><tr><th>#</th><th>Exercise</th><th>Target sets</th><th>Target reps</th><th>Target kg</th><th>Rest sec</th><th>Notes</th><th></th></tr></thead>
+      <thead><tr><th>#</th><th>Exercise</th><th>Target sets</th><th>Target reps</th><th>Target kg</th><th>Rest sec</th><th>Notes</th><th>Action</th></tr></thead>
       <tbody>${exercisePage.items.map((exercise, index) => workoutV2RenderTemplateRow(exercise, exercisePage.start + index)).join("")}</tbody>
     </table></div>
     ${workoutV2RenderPagination("Templates", routine.exercises.length)}
@@ -669,6 +743,7 @@ function workoutV2RenderHistory() {
   const page = workoutV2Paginate(allRows, "History");
   const rows = page.items;
   return `<section class="workout-v2-panel">
+    <h3>Workout history</h3>
     <div class="workout-v2-form-row workout-v2-filters">
       <label class="workout-v2-grow">Text, routine, or exercise<input id="workoutV2HistoryText" value="${workoutV2Escape(workoutV2UiState.historyText)}"></label>
       <label>From<input id="workoutV2HistoryFrom" type="date" value="${workoutV2Escape(workoutV2UiState.historyFrom)}"></label>
@@ -712,6 +787,7 @@ function workoutV2RenderProgress() {
   const bestWeight = weights.length ? Math.max(...weights) : null;
   const totalVolume = volumes.reduce((sum, value) => sum + value, 0);
   return `<section class="workout-v2-panel">
+    <h3>Exercise progress</h3>
     <div class="workout-v2-form-row"><label>Exercise<select id="workoutV2ProgressExercise">${names.map((name) => `<option value="${workoutV2Escape(name)}"${name === exercise ? " selected" : ""}>${workoutV2Escape(name)}</option>`).join("")}</select></label></div>
     <div class="workout-v2-metrics"><div><strong>Best weight</strong><span>${bestWeight == null ? "—" : `${workoutV2Escape(bestWeight)} kg`}</span></div><div><strong>Recorded volume</strong><span>${volumes.length ? `${workoutV2Escape(totalVolume.toFixed(2))} kg` : "—"}</span></div><div><strong>Recent rows</strong><span>${rows.length}</span></div></div>
     <div class="workout-v2-table-wrap"><table class="workout-v2-table">
@@ -815,7 +891,10 @@ function workoutV2UpdateSessionField(session, field, value) {
 }
 
 function workoutV2UpdateEntryField(entry, field, value) {
-  if (["weightKg", "reps", "rpe", "distanceMeters", "seconds"].includes(field)) entry[field] = workoutV2Number(value);
+  if (field === "setType") {
+    const setOrderByType = { warmup: "W", failure: "F", drop: "D", note: "Note", rest: "Rest Timer" };
+    entry.setOrder = setOrderByType[value] || "1";
+  } else if (["weightKg", "reps", "rpe", "distanceMeters", "seconds"].includes(field)) entry[field] = workoutV2Number(value);
   else entry[field] = String(value || "");
 }
 
@@ -929,6 +1008,16 @@ function workoutV2BindEvents(mount) {
     const entry = session?.entries[Number(input.dataset.entryIndex)];
     if (!entry || session.status === "completed") return;
     workoutV2UpdateEntryField(entry, input.dataset.entryField, input.value);
+    workoutV2RenumberWorkingSets(session);
+    workoutV2ScheduleSave({ session });
+    if (input.dataset.entryField === "setType") renderWorkoutV2();
+  }));
+  mount.querySelectorAll("[data-exercise-name-start]").forEach((input) => input.addEventListener("input", () => {
+    const session = workoutV2Session(workoutV2UiState.selectedSessionId);
+    if (!session || session.status === "completed") return;
+    const start = Number(input.dataset.exerciseNameStart);
+    const count = Number(input.dataset.exerciseNameCount);
+    session.entries.slice(start, start + count).forEach((entry) => { entry.exerciseName = input.value; });
     workoutV2ScheduleSave({ session });
   }));
   mount.querySelectorAll("[data-template-field]").forEach((input) => input.addEventListener("input", () => {
@@ -979,15 +1068,42 @@ function workoutV2BindEvents(mount) {
       workoutV2UiState.pendingRoutineCode = code;
       workoutV2CreateDraft(dateKey, code, workoutV2UiState.pendingDateKey ? "gamify" : "startpage");
       renderWorkoutV2();
-    } else if (action === "add-entry" && session) {
-      session.entries.push(workoutV2NormalizeEntry({ setOrder: String(session.entries.length + 1) }, session.entries.length));
+    } else if (action === "add-exercise" && session) {
+      session.entries.push(workoutV2NormalizeEntry({ exerciseName: "", setOrder: "1" }, session.entries.length));
+      workoutV2RenumberWorkingSets(session);
+      workoutV2UiState.pageByView.Log = Math.ceil(workoutV2ExerciseGroups(session).length / WORKOUT_V2_PAGE_SIZE);
+      workoutV2ScheduleSave({ session });
+      renderWorkoutV2();
+    } else if (action === "add-set" && session) {
+      const start = Number(button.dataset.start);
+      const count = Number(button.dataset.count);
+      const exerciseName = session.entries[start]?.exerciseName || "";
+      session.entries.splice(start + count, 0, workoutV2NormalizeEntry({ exerciseName, setOrder: "1" }, start + count));
+      workoutV2RenumberWorkingSets(session);
       workoutV2ScheduleSave({ session });
       renderWorkoutV2();
     } else if (action === "remove-entry" && session) {
       session.entries.splice(Number(button.dataset.index), 1);
-      session.entries.forEach((entry, index) => { entry.entryOrder = index; });
+      workoutV2RenumberWorkingSets(session);
       workoutV2ScheduleSave({ session });
       renderWorkoutV2();
+    } else if (action === "remove-exercise" && session) {
+      session.entries.splice(Number(button.dataset.start), Number(button.dataset.count));
+      workoutV2RenumberWorkingSets(session);
+      workoutV2ScheduleSave({ session });
+      renderWorkoutV2();
+    } else if (action === "move-exercise" && session) {
+      const groups = workoutV2ExerciseGroups(session);
+      const groupIndex = groups.findIndex((group) => group.startIndex === Number(button.dataset.start));
+      const targetIndex = groupIndex + Number(button.dataset.direction);
+      if (groupIndex >= 0 && targetIndex >= 0 && targetIndex < groups.length) {
+        const blocks = groups.map((group) => group.entries.map(({ entry }) => entry));
+        [blocks[groupIndex], blocks[targetIndex]] = [blocks[targetIndex], blocks[groupIndex]];
+        session.entries = blocks.flat();
+        workoutV2RenumberWorkingSets(session);
+        workoutV2ScheduleSave({ session });
+        renderWorkoutV2();
+      }
     } else if (action === "finish" && session) await workoutV2Finish(session);
     else if (action === "reopen" && session) await workoutV2Reopen(session);
     else if (action === "delete-session" && session) await workoutV2DeleteSession(session);
@@ -997,6 +1113,7 @@ function workoutV2BindEvents(mount) {
     } else if (action === "add-template-entry") {
       const routine = workoutV2Routine(workoutV2UiState.templateCode);
       routine.exercises.push(workoutV2NormalizeExercise({ targetSets: 1 }, routine.exercises.length));
+      workoutV2UiState.pageByView.Templates = Math.ceil(routine.exercises.length / WORKOUT_V2_PAGE_SIZE);
       workoutV2ScheduleSave({ routine });
       renderWorkoutV2();
     } else if (action === "remove-template-entry") {

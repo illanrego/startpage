@@ -50,7 +50,13 @@
 
 #workoutTableDiv .workout-v2-panel h3 {
   margin: 0 0 4px;
+  padding: 0;
+  flex: none;
+  font-family: "win98", "MS Sans Serif", Tahoma, sans-serif;
   font-size: 13px;
+  line-height: 1.25;
+  color: #111;
+  text-shadow: none;
 }
 
 #workoutTableDiv .workout-v2-panel-heading {
@@ -91,7 +97,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 11px;
+  font-size: 12px;
   color: #222;
 }
 
@@ -102,24 +108,42 @@
 
 #workoutTableDiv .workout-v2-form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: 150px minmax(220px, 2fr) minmax(180px, 1fr) 150px;
+  align-items: end;
+}
+
+#workoutTableDiv .workout-v2-form-grid input,
+#workoutTableDiv .workout-v2-form-grid select,
+#workoutTableDiv .workout-v2-form-row input:not([type="file"]),
+#workoutTableDiv .workout-v2-form-row select,
+#workoutTableDiv .workout-v2-block-label textarea {
+  width: 100%;
+}
+
+#workoutTableDiv .workout-v2-wide-field {
+  min-width: 220px;
 }
 
 #workoutTableDiv .workout-v2-block-label {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 11px;
+  font-size: 12px;
   color: #222;
 }
 
 #workoutTableDiv .workout-v2 input,
 #workoutTableDiv .workout-v2 select,
 #workoutTableDiv .workout-v2 textarea {
-  font-family: "win98", sans-serif;
-  font-size: 12px;
-  padding: 2px;
-  border: 1px solid #7a7a7a;
+  font-family: "win98", "MS Sans Serif", Tahoma, sans-serif;
+  font-size: 13px;
+  min-height: 27px;
+  min-width: 0;
+  padding: 3px 5px;
+  border-top: 2px solid #7a7a7a;
+  border-left: 2px solid #7a7a7a;
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
   background: #fff;
   color: #111;
   box-sizing: border-box;
@@ -153,6 +177,59 @@
   background: #c0c0c0;
 }
 
+#workoutTableDiv .workout-v2-section-title {
+  font-weight: 700;
+  font-size: 13px;
+  padding: 4px 2px;
+}
+
+#workoutTableDiv .workout-v2-exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#workoutTableDiv .workout-v2-exercise-group {
+  border-top: 2px solid #7a7a7a;
+  border-left: 2px solid #7a7a7a;
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  background: #d4d4d4;
+  padding: 7px;
+}
+
+#workoutTableDiv .workout-v2-exercise-heading {
+  display: grid;
+  grid-template-columns: auto minmax(240px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+#workoutTableDiv .workout-v2-exercise-order {
+  min-width: 72px;
+  font-weight: 700;
+}
+
+#workoutTableDiv .workout-v2-exercise-name {
+  width: 100%;
+}
+
+#workoutTableDiv .workout-v2-exercise-actions {
+  display: flex;
+  gap: 4px;
+}
+
+#workoutTableDiv .workout-v2-add-set {
+  margin-top: 6px;
+}
+
+#workoutTableDiv .workout-v2-empty {
+  padding: 12px;
+  border: 1px inset #ffffff;
+  background: #ffffff;
+}
+
 #workoutTableDiv .workout-v2-table-wrap {
   overflow-x: auto;
   padding-bottom: 2px;
@@ -160,21 +237,23 @@
 
 #workoutTableDiv .workout-v2-table {
   width: 100%;
+  min-width: 900px;
   border-collapse: collapse;
-  table-layout: fixed;
-  background: #cfcfcf;
+  table-layout: auto;
+  background: #ffffff;
 }
 
 #workoutTableDiv .workout-v2-table th,
 #workoutTableDiv .workout-v2-table td {
   border: 1px solid #6a6a6a;
-  padding: 2px;
-  background: #cfcfcf;
-  vertical-align: top;
+  padding: 3px;
+  background: #ffffff;
+  vertical-align: middle;
 }
 
 #workoutTableDiv .workout-v2-table th {
   background: #c8c8c8;
+  color: #111;
   font-weight: 700;
   text-align: center;
   padding: 3px 2px;
@@ -187,8 +266,28 @@
   background: #fff;
 }
 
-#workoutTableDiv .workout-v2-entry-table td:nth-child(3) {
-  min-width: 140px;
+#workoutTableDiv .workout-v2-set-table th:nth-child(1) { width: 42px; }
+#workoutTableDiv .workout-v2-set-table th:nth-child(2) { width: 110px; }
+#workoutTableDiv .workout-v2-set-table th:nth-child(3),
+#workoutTableDiv .workout-v2-set-table th:nth-child(4),
+#workoutTableDiv .workout-v2-set-table th:nth-child(5),
+#workoutTableDiv .workout-v2-set-table th:nth-child(6),
+#workoutTableDiv .workout-v2-set-table th:nth-child(7) { width: 88px; }
+#workoutTableDiv .workout-v2-set-table th:nth-child(8) { width: 220px; }
+#workoutTableDiv .workout-v2-set-table th:nth-child(9) { width: 34px; }
+
+#workoutTableDiv .workout-v2-set-number {
+  text-align: center;
+  font-weight: 700;
+}
+
+#workoutTableDiv input[type="date"] {
+  min-width: 145px;
+}
+
+#workoutTableDiv .workout-v2-form-row input:not([type="file"]),
+#workoutTableDiv .workout-v2-form-row select {
+  min-width: 170px;
 }
 
 #workoutTableDiv .workout-v2-notes-cell {

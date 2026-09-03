@@ -16,6 +16,11 @@ test("Workout V2 paginates dense views and binds delegation only once", () => {
   assert.match(app, /workoutV2RenderPagination\("History"/);
   assert.match(app, /workoutV2RenderPagination\("Progress"/);
   assert.match(app, /await workoutV2ReconcileAllDates\(\)/);
+  assert.match(app, /function workoutV2ExerciseGroups\(/);
+  assert.match(app, /Add exercise/);
+  assert.match(app, /Add set/);
+  assert.match(app, /Set type/);
+  assert.doesNotMatch(app, /<th>Set order<\/th>/);
 });
 
 test("Workout V2 uses neutral Win98 button/panel colors", () => {
