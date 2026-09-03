@@ -338,6 +338,40 @@ Verification:
 - manually exercise the browser flow locally: calendar → draft → log → finish → history → Gamify;
 - commit each coherent phase; do not push unless explicitly requested.
 
+## Accepted boundaries
+
+- Do not change Coding's definition: only LeetCode/Java/old-school study belongs in that skill.
+- Do not alter other Gamify skills, Habitica scoring, Finance, Planner, Kanban, or unrelated windows.
+- Do not push or deploy automatically.
+- Do not delete the supplied CSV or legacy workout data during migration.
+
+## Delivered behavior (2026-09-02)
+
+Implemented and committed in three phases behind 10 passing unit/static tests:
+
+1. **CSV compatibility core** (`workout-core.js`) — tolerant Strong CSV parsing that survives
+   unescaped quotes/embedded newlines, 13-field export, A-F routine-name inference, idempotent
+   import, draft/completed lifecycle, fitness value derivation (A-F = 1-6, unknown = 7), and
+   exercise progress stats. Verified against the supplied export: 6,397 rows / 320 workouts.
+2. **Supabase schema** (`20260902000000_workout_sessions.sql`) — `workout_routines`,
+   `workout_routine_exercises`, `workout_sessions`, `workout_session_entries` with RLS,
+   same-user FK chains, triggers, indexes, and a unique `user_id,external_key` idempotency key.
+3. **Browser app** (`workout-v2.js` + `workout-v2.css`) — the Workout window is now a 5-tab
+   experience (Log, Templates, History, Progress, Import / Export) with detailed ordered entry
+   rows, explicit Finish/reopen/delete, autosave, flexible A-F template editor, filters,
+   per-exercise progress, preview-then-import, and Strong-compatible export. It reads the legacy
+   option only once to seed A-F routine templates, and degrades to local storage when the
+   new tables are absent. `startpage.js` was wired so a Musculacao calendar day opens the Log
+   with an A-F picker (decision kept), finished sessions populate the circuit letter/XP, and
+   ambiguous workouts use an unlabeled value-7 dot.
+
+Not yet applied:
+
+- The new tables must be migrated to Supabase for signed-in persistence.
+- The supplied 320-workout history has not been imported; check a preview on the Import / Export
+  tab and confirm before writing.
+- A broad reload-to-reload browser smoke test of the editor is still manual.
+
 ## Acceptance criteria
 
 - Reloading no longer makes saved Workout state ambiguous or silently lose changes.
