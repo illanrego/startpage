@@ -111,6 +111,176 @@
     return Array.from(byKey.values());
   }
 
+  function nullableNumber(value) {
+    if (value === "" || value == null) return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function cloneWorkoutData(data) {
+    const source = data && typeof data === "object" ? data : {};
+    return {
+      version: 2,
+      routines: Array.isArray(source.routines)
+        ? source.routines.map((routine) => ({ ...routine, exercises: Array.isArray(routine.exercises) ? routine.exercises.map((exercise) => ({ ...exercise })) : [] }))
+        : [],
+      sessions: Array.isArray(source.sessions)
+        ? source.sessions.map((session) => ({
+          ...session,
+          entries: Array.isArray(session.entries) ? session.entries.map((entry) => ({ ...entry })) : [],
+        }))
+        : [],
+    };
+  }
+
+  function importStrongWorkouts(data, workouts) {
+    const next = cloneWorkoutData(data);
+    const existing = new Set(next.sessions.map((session) => session.externalKey).filter(Boolean));
+    let imported = 0;
+    let skipped = 0;
+
+    (Array.isArray(workouts) ? workouts : []).forEach((workout) => {
+      if (!workout || !workout.externalKey || existing.has(workout.externalKey)) {
+        skipped += 1;
+        return;
+      }
+      const startedAt = String(workout.date || "").replace(" ", "T");
+      next.sessions.push({
+        id: workout.externalKey,
+        externalKey: workout.externalKey,
+        externalWorkoutNumber: String(workout.externalWorkoutNumber || ""),
+        dateKey: String(workout.date || "").slice(0, 10),
+        startedAt,
+        workoutName: String(workout.workoutName || "Workout"),
+        routineCode: inferRoutineCode(workout.workoutName),
+        durationSeconds: nullableNumber(workout.durationSeconds),
+        workoutNotes: String(workout.workoutNotes || ""),
+        status: "completed",
+        source: "strong_import",
+        completedAt: startedAt,
+        entries: (Array.isArray(workout.entries) ? workout.entries : []).map((entry, index) => ({
+          exerciseName: String(entry.exerciseName || ""),
+          entryOrder: Number.isInteger(entry.entryOrder) ? entry.entryOrder : index,
+          setOrder: String(entry.setOrder || ""),
+          weightKg: nullableNumber(entry.weightKg),
+          reps: nullableNumber(entry.reps),
+          rpe: nullableNumber(entry.rpe),
+          distanceMeters: nullableNumber(entry.distanceMeters),
+          seconds: nullableNumber(entry.seconds),
+          notes: String(entry.notes || ""),
+        })),
+      });
+      existing.add(workout.externalKey);
+      imported += 1;
+    });
+
+    return { data: next, imported, skipped };
+  }
+
+  function createWorkoutDraft(data, options) {
+    const next = cloneWorkoutData(data);
+    const dateKey = String(options?.dateKey || "").slice(0, 10);
+    const routineCode = /^[A-F]$/.test(String(options?.routineCode || "").toUpperCase())
+      ? String(options.routineCode).toUpperCase()
+      : "";
+    let session = next.sessions.find(
+      (candidate) => candidate.status === "draft" && candidate.dateKey === dateKey && candidate.source === "gamify",
+    );
+    const created = !session;
+    if (!session) {
+      session = {
+        id: `gamify-draft:${dateKey}`,
+        externalKey: "",
+        externalWorkoutNumber: "",
+        dateKey,
+        startedAt: `${dateKey}T12:00:00`,
+        workoutName: String(options?.routineName || routineCode || "Workout"),
+        routineCode,
+        durationSeconds: null,
+        workoutNotes: "",
+        status: "draft",
+        source: "gamify",
+        completedAt: "",
+        entries: (Array.isArray(options?.entries) ? options.entries : []).map((entry, index) => ({
+          exerciseName: String(entry.exerciseName || ""),
+          entryOrder: index,
+          setOrder: String(entry.setOrder || index + 1),
+          weightKg: nullableNumber(entry.weightKg),
+          reps: nullableNumber(entry.reps),
+          rpe: nullableNumber(entry.rpe),
+          distanceMeters: nullableNumber(entry.distanceMeters),
+          seconds: nullableNumber(entry.seconds),
+          notes: String(entry.notes || ""),
+        })),
+      };
+      next.sessions.push(session);
+    } else {
+      session.routineCode = routineCode;
+      session.workoutName = String(options?.routineName || routineCode || session.workoutName || "Workout");
+      if (Array.isArray(options?.entries) && session.entries.length === 0) {
+        session.entries = options.entries.map((entry, index) => ({ ...entry, entryOrder: index }));
+      }
+    }
+    return { data: next, session, created };
+  }
+
+  function finishWorkoutSession(data, sessionId, completedAt) {
+    const next = cloneWorkoutData(data);
+    const session = next.sessions.find((candidate) => candidate.id === sessionId);
+    if (!session) return { data: next, session: null };
+    session.status = "completed";
+    session.completedAt = String(completedAt || new Date().toISOString());
+    return { data: next, session };
+  }
+
+  function computeExerciseProgress(data, exerciseName) {
+    const target = String(exerciseName || "").trim().toLocaleLowerCase();
+    const sets = [];
+    cloneWorkoutData(data).sessions.forEach((session) => {
+      if (session.status !== "completed") return;
+      session.entries.forEach((entry) => {
+        if (String(entry.exerciseName || "").trim().toLocaleLowerCase() !== target) return;
+        if (["note", "rest timer"].includes(String(entry.setOrder || "").trim().toLocaleLowerCase())) return;
+        const weightKg = nullableNumber(entry.weightKg);
+        const reps = nullableNumber(entry.reps);
+        if (weightKg == null && reps == null) return;
+        sets.push({
+          ...entry,
+          weightKg,
+          reps,
+          dateKey: session.dateKey || String(session.startedAt || "").slice(0, 10),
+          workoutName: session.workoutName || "Workout",
+        });
+      });
+    });
+    sets.sort((a, b) => String(b.dateKey).localeCompare(String(a.dateKey)));
+
+    let bestWeightKg = null;
+    let totalVolumeKg = 0;
+    const bestRepsByWeight = {};
+    sets.forEach((entry) => {
+      if (entry.weightKg != null) {
+        bestWeightKg = bestWeightKg == null ? entry.weightKg : Math.max(bestWeightKg, entry.weightKg);
+      }
+      if (entry.weightKg != null && entry.reps != null) {
+        totalVolumeKg += entry.weightKg * entry.reps;
+        const key = String(entry.weightKg);
+        bestRepsByWeight[key] = Math.max(bestRepsByWeight[key] || 0, entry.reps);
+      }
+    });
+    return { sets, bestWeightKg, totalVolumeKg, bestRepsByWeight };
+  }
+
+  function getFitnessTrackerValueForDate(data, dateKey) {
+    const completed = cloneWorkoutData(data).sessions
+      .filter((session) => session.status === "completed" && session.dateKey === dateKey)
+      .sort((a, b) => String(a.startedAt || "").localeCompare(String(b.startedAt || "")));
+    if (completed.length === 0) return 0;
+    const latest = completed[completed.length - 1];
+    const codeIndex = ["A", "B", "C", "D", "E", "F"].indexOf(latest.routineCode);
+    return codeIndex >= 0 ? codeIndex + 1 : 7;
+  }
+
   function csvValue(value) {
     return `"${String(value ?? "").replace(/"/g, '""')}"`;
   }
@@ -169,7 +339,12 @@
 
   return {
     STRONG_HEADERS,
+    computeExerciseProgress,
+    createWorkoutDraft,
     exportStrongCsv,
+    finishWorkoutSession,
+    getFitnessTrackerValueForDate,
+    importStrongWorkouts,
     inferRoutineCode,
     parseStrongCsv,
   };

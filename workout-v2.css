@@ -1,0 +1,268 @@
+/* Workout V2 — retro OS styling. Scoped under #workoutTableDiv .workout-v2. */
+
+#workoutTableDiv .workout-v2 {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: "win98", sans-serif;
+  font-size: 12px;
+  color: #111;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#workoutTableDiv .workout-v2-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #7a7a7a;
+}
+
+#workoutTableDiv .workout-v2-tabs button[role="tab"] {
+  font-family: "win98", sans-serif;
+  font-size: 12px;
+  padding: 4px 10px 3px;
+  border: 1px solid #6a6a6a;
+  background: #dcdcdc;
+  color: #111;
+}
+
+#workoutTableDiv .workout-v2-tabs button[role="tab"][aria-selected="true"] {
+  background: #c0c0c0;
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #7a7a7a;
+  font-weight: 700;
+}
+
+#workoutTableDiv .workout-v2-content {
+  min-width: 0;
+}
+
+#workoutTableDiv .workout-v2-panel {
+  border: 1px solid #000;
+  background: #ececec;
+  box-shadow: inset -1px -1px 0 #7a7a7a, inset 1px 1px 0 #ffffff;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#workoutTableDiv .workout-v2-panel h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+#workoutTableDiv .workout-v2-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#workoutTableDiv .workout-v2-panel-heading h3 {
+  margin: 0;
+}
+
+#workoutTableDiv .workout-v2-status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid #6a6a6a;
+}
+
+#workoutTableDiv .workout-v2-status--draft {
+  background: #fff3c4;
+}
+
+#workoutTableDiv .workout-v2-status--completed {
+  background: #b8dca7;
+}
+
+#workoutTableDiv .workout-v2-form-row,
+#workoutTableDiv .workout-v2-form-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+#workoutTableDiv .workout-v2-form-row label,
+#workoutTableDiv .workout-v2-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: #222;
+}
+
+#workoutTableDiv .workout-v2-grow {
+  flex: 1 1 auto;
+  min-width: 160px;
+}
+
+#workoutTableDiv .workout-v2-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+#workoutTableDiv .workout-v2-block-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: #222;
+}
+
+#workoutTableDiv .workout-v2 input,
+#workoutTableDiv .workout-v2 select,
+#workoutTableDiv .workout-v2 textarea {
+  font-family: "win98", sans-serif;
+  font-size: 12px;
+  padding: 2px;
+  border: 1px solid #7a7a7a;
+  background: #fff;
+  color: #111;
+  box-sizing: border-box;
+}
+
+#workoutTableDiv .workout-v2 button {
+  font-family: "win98", sans-serif;
+  font-size: 12px;
+  padding: 3px 10px 2px;
+  border: 1px solid #6a6a6a;
+  background: #dcdcdc;
+  color: #111;
+}
+
+#workoutTableDiv .workout-v2 button:active {
+  box-shadow: inset 1px 1px 0 #7a7a7a;
+}
+
+#workoutTableDiv .workout-v2 .workout-v2-primary {
+  background: #b8dca7;
+}
+
+#workoutTableDiv .workout-v2 .workout-v2-danger {
+  background: #f2c4c4;
+}
+
+#workoutTableDiv .workout-v2-table-wrap {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+#workoutTableDiv .workout-v2-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: #cfcfcf;
+}
+
+#workoutTableDiv .workout-v2-table th,
+#workoutTableDiv .workout-v2-table td {
+  border: 1px solid #6a6a6a;
+  padding: 2px;
+  background: #cfcfcf;
+  vertical-align: top;
+}
+
+#workoutTableDiv .workout-v2-table th {
+  background: #c8c8c8;
+  font-weight: 700;
+  text-align: center;
+  padding: 3px 2px;
+}
+
+#workoutTableDiv .workout-v2-table input,
+#workoutTableDiv .workout-v2-table select {
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+#workoutTableDiv .workout-v2-entry-table td:nth-child(3) {
+  min-width: 140px;
+}
+
+#workoutTableDiv .workout-v2-notes-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+#workoutTableDiv .workout-v2-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#workoutTableDiv .workout-v2-help {
+  font-size: 11px;
+  color: #333;
+  margin: 0;
+}
+
+#workoutTableDiv .workout-v2-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#workoutTableDiv .workout-v2-metrics > div {
+  border: 1px solid #6a6a6a;
+  background: #fff;
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+
+#workoutTableDiv .workout-v2-sync {
+  font-size: 11px;
+  color: #333;
+  min-height: 14px;
+}
+
+#workoutTableDiv .workout-v2-import-preview {
+  border: 1px solid #6a6a6a;
+  background: #fff;
+  padding: 6px;
+  font-size: 12px;
+}
+
+#workoutTableDiv .workout-v2-import-preview ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+#workoutTableDiv .workout-v2-file-label input[type="file"] {
+  max-width: 240px;
+}
+
+/* Desktop sizing for the workout container stays as-is; mobile goes full width. */
+@media (max-width: 760px) {
+  #workoutTableDiv .workout-v2-table {
+    min-width: 560px;
+  }
+  #workoutTableDiv .workout-v2-form-grid {
+    grid-template-columns: 1fr;
+  }
+  #workoutTableDiv .workout-v2-grow {
+    min-width: 0;
+  }
+  #workoutTableDiv .workout-v2-file-label input[type="file"] {
+    max-width: none;
+  }
+}
+
+/* Draft marker on the Gamify streak calendar: hollow so it reads as unfinished. */
+.gamify-streak-dot--draft {
+  background: transparent;
+  border: 2px dashed currentColor;
+  border-radius: 50%;
+}
+
+.gamify-streak-dot--draft .gamify-streak-dot-label {
+  color: inherit;
+}

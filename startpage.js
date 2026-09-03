@@ -1619,6 +1619,9 @@ async function refreshBackendModules(options = {}) {
 
   if (shouldImportLocal) await importWorkoutLocalDataOnce();
   await loadWorkoutBackendState();
+  if (typeof loadWorkoutV2BackendState === "function") {
+    await loadWorkoutV2BackendState({ importLocal: shouldImportLocal });
+  }
   renderWorkout();
 
   if (shouldImportLocal) await importListsLocalDataOnce();
@@ -1647,6 +1650,7 @@ async function handleBackendSession(session) {
     trackerRemoteState.loaded = false;
     calendarRemoteState.loaded = false;
     workoutRemoteState.loaded = false;
+    if (typeof resetWorkoutV2BackendState === "function") resetWorkoutV2BackendState();
     listRemoteState.loaded = false;
     plannerRemoteState.loaded = false;
     integrationRemoteState.loaded = false;
@@ -1676,6 +1680,7 @@ async function handleBackendSession(session) {
     trackerRemoteState.loaded = false;
     calendarRemoteState.loaded = false;
     workoutRemoteState.loaded = false;
+    if (typeof resetWorkoutV2BackendState === "function") resetWorkoutV2BackendState();
     listRemoteState.loaded = false;
     plannerRemoteState.loaded = false;
     integrationRemoteState.loaded = false;
@@ -1823,6 +1828,7 @@ async function refreshBackendFromServer() {
     trackerRemoteState.loaded = false;
     calendarRemoteState.loaded = false;
     workoutRemoteState.loaded = false;
+    if (typeof resetWorkoutV2BackendState === "function") resetWorkoutV2BackendState();
     listRemoteState.loaded = false;
     setBackendAuthStatus(`Backend: reload failed (${describeBackendError(error)})`);
     renderFinanceList();
@@ -5422,6 +5428,10 @@ function saveWorkoutSnapshot() {
 }
 
 function renderWorkout() {
+  if (typeof renderWorkoutV2 === "function") {
+    renderWorkoutV2();
+    return;
+  }
   const mount = document.getElementById("workoutTableDiv");
   if (!mount) return;
 
@@ -6119,6 +6129,13 @@ async function completeDaily(taskId, buttonEl) {
   let remoteUpdated = false;
 
   try {
+    if (!historyDone && daily.skillCode === "fitness" && typeof handleWorkoutGamifyDay === "function") {
+      const today = new Date();
+      await handleWorkoutGamifyDay(today.getFullYear(), today.getMonth(), today.getDate());
+      setHabiticaSyncStatus(`Finish today's workout before scoring "${daily.text}".`);
+      if (buttonEl) buttonEl.disabled = false;
+      return;
+    }
     if (!historyDone && daily.skillCode) {
       historyUpdated = await syncDailyHistoryForToday(daily);
     }
@@ -7138,7 +7155,7 @@ function getTrackerDefinitions() {
     localCode: skill,
     label: meta.label,
     color: meta.color,
-    dayMax: skill === "standup" ? 3 : skill === "fitness" ? FITNESS_TRAINING_CYCLE.length : 1,
+    dayMax: skill === "standup" ? 3 : skill === "fitness" ? 7 : 1,
   }));
 }
 
@@ -7153,6 +7170,7 @@ function isTrackerBackendWritable() {
 function encodeTrackerValue(kind, localCode, value) {
   if (kind === "skill" && localCode === "fitness") {
     const training = fitnessTrainingFromValue(value);
+    if (training === FITNESS_UNKNOWN_TRAINING) return 7;
     return training ? FITNESS_TRAINING_CYCLE.indexOf(training) + 1 : 0;
   }
   if (kind === "skill") return gamifyDayXpValue(localCode, value);
@@ -7162,6 +7180,7 @@ function encodeTrackerValue(kind, localCode, value) {
 function decodeTrackerValue(kind, localCode, value) {
   const n = Math.max(0, Number(value) || 0);
   if (kind === "skill" && localCode === "fitness") {
+    if (n === 7) return FITNESS_UNKNOWN_TRAINING;
     return FITNESS_TRAINING_CYCLE[n - 1] || "";
   }
   return n;
@@ -7371,13 +7390,19 @@ let gamifySelectedSkill = "coding";
 let gamifyViewYear = new Date().getFullYear();
 let gamifyViewMonth = new Date().getMonth();
 const FITNESS_TRAINING_CYCLE = ["A", "B", "C", "D", "E", "F"];
+const FITNESS_UNKNOWN_TRAINING = "__WORKOUT__";
 
 function fitnessTrainingFromValue(value) {
   if (typeof value === "string") {
     const v = value.trim().toUpperCase();
     if (FITNESS_TRAINING_CYCLE.includes(v)) return v;
+    if (v === FITNESS_UNKNOWN_TRAINING) return FITNESS_UNKNOWN_TRAINING;
   }
-  if ((Number(value) || 0) > 0) return "A";
+  const numeric = Number(value) || 0;
+  if (numeric === 7) return FITNESS_UNKNOWN_TRAINING;
+  if (numeric >= 1 && numeric <= FITNESS_TRAINING_CYCLE.length) {
+    return FITNESS_TRAINING_CYCLE[numeric - 1];
+  }
   return "";
 }
 
@@ -7387,7 +7412,10 @@ function isGamifyDayDone(skill, value) {
 }
 
 function getGamifyDayBadge(skill, value) {
-  if (skill === "fitness") return fitnessTrainingFromValue(value);
+  if (skill === "fitness") {
+    const training = fitnessTrainingFromValue(value);
+    return training === FITNESS_UNKNOWN_TRAINING ? "" : training;
+  }
   if (skill === "standup") {
     const count = Number(value) || 0;
     return count > 0 ? String(count) : "";
@@ -7478,6 +7506,10 @@ async function syncMappedDailyFromGamifyChange(skill, prevValue, nextValue, year
 }
 
 function toggleGamifyDay(skill, year, month, day) {
+  if (skill === "fitness" && typeof handleWorkoutGamifyDay === "function") {
+    void handleWorkoutGamifyDay(year, month, day);
+    return;
+  }
   const boardState = getBoardStateSnapshot(skill, year, month);
   const prevValue = boardState[day];
   const nextValue = nextGamifyDayState(skill, prevValue);
@@ -7678,6 +7710,11 @@ function renderGamifyStreakCalendar() {
     } else {
       const day = i - startPad + 1;
       const dayValue = boardState[day];
+      const dateKey = trackerDateKey(year, month, day);
+      const workoutDraft =
+        skill === "fitness" && typeof getWorkoutDraftForDate === "function"
+          ? getWorkoutDraftForDate(dateKey)
+          : null;
       const done = isGamifyDayDone(skill, dayValue);
       const badge = getGamifyDayBadge(skill, dayValue);
 
@@ -7702,6 +7739,15 @@ function renderGamifyStreakCalendar() {
           label.textContent = badge;
           dot.appendChild(label);
         }
+        dotSlot.appendChild(dot);
+      } else if (workoutDraft) {
+        const dot = document.createElement("span");
+        dot.className = "gamify-streak-dot gamify-streak-dot--draft";
+        dot.style.borderColor = meta.color;
+        const label = document.createElement("span");
+        label.className = "gamify-streak-dot-label";
+        label.textContent = workoutDraft.routineCode || "…";
+        dot.appendChild(label);
         dotSlot.appendChild(dot);
       }
       cell.appendChild(dotSlot);
