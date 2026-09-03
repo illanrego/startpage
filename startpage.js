@@ -3116,14 +3116,12 @@ function renderFinanceBalancePanel(allEntries) {
   const openingDateInput = document.getElementById("financeOpeningDateInput");
   const openingAmountInput = document.getElementById("financeOpeningAmountInput");
   const currentBalanceEl = document.getElementById("financeCurrentBalance");
-  const selectedMonthNetEl = document.getElementById("financeSelectedMonthNet");
   const projectedMonthEndEl = document.getElementById("financeProjectedMonthEndBalance");
   const emptyStateEl = document.getElementById("financeBalanceEmptyState");
   if (
     !openingDateInput ||
     !openingAmountInput ||
     !currentBalanceEl ||
-    !selectedMonthNetEl ||
     !projectedMonthEndEl ||
     !emptyStateEl
   ) {
@@ -3132,7 +3130,6 @@ function renderFinanceBalancePanel(allEntries) {
 
   const openingBalance = getFinanceOpeningBalanceState();
   const balanceMeta = getFinanceCurrentBalanceMeta(allEntries, openingBalance);
-  const monthNet = getFinanceMonthNet(allEntries, getSelectedFinanceMonthKey()).netTotal;
   const projectedMonthEndBalance = getFinanceProjectedMonthEndBalance(
     allEntries,
     getSelectedFinanceMonthKey(),
@@ -3147,7 +3144,6 @@ function renderFinanceBalancePanel(allEntries) {
   }
 
   currentBalanceEl.textContent = financeAmountTextOrEmpty(balanceMeta.currentBalance);
-  selectedMonthNetEl.textContent = formatFinanceAmount(monthNet);
   projectedMonthEndEl.textContent = financeAmountTextOrEmpty(projectedMonthEndBalance);
   emptyStateEl.hidden = Boolean(openingBalance);
 }
