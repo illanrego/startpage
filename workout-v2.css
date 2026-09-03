@@ -75,7 +75,7 @@
 }
 
 #workoutTableDiv .workout-v2-status--completed {
-  background: #b8dca7;
+  background: #dcdcdc;
 }
 
 #workoutTableDiv .workout-v2-form-row,
@@ -128,22 +128,29 @@
 #workoutTableDiv .workout-v2 button {
   font-family: "win98", sans-serif;
   font-size: 12px;
-  padding: 3px 10px 2px;
-  border: 1px solid #6a6a6a;
-  background: #dcdcdc;
+  padding: 4px 9px 3px;
+  border-top: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid #222222;
+  border-bottom: 2px solid #222222;
+  background: #c0c0c0;
   color: #111;
 }
 
 #workoutTableDiv .workout-v2 button:active {
-  box-shadow: inset 1px 1px 0 #7a7a7a;
+  border-top-color: #222222;
+  border-left-color: #222222;
+  border-right-color: #ffffff;
+  border-bottom-color: #ffffff;
+  box-shadow: none;
 }
 
 #workoutTableDiv .workout-v2 .workout-v2-primary {
-  background: #b8dca7;
+  background: #c0c0c0;
 }
 
 #workoutTableDiv .workout-v2 .workout-v2-danger {
-  background: #f2c4c4;
+  background: #c0c0c0;
 }
 
 #workoutTableDiv .workout-v2-table-wrap {
@@ -189,6 +196,21 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 120px;
+}
+
+#workoutTableDiv .workout-v2-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 11px;
+}
+
+#workoutTableDiv .workout-v2-pagination button:disabled {
+  color: #666;
+  border-color: #999;
+  opacity: 0.7;
 }
 
 #workoutTableDiv .workout-v2-actions {

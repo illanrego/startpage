@@ -3,6 +3,7 @@
 const WORKOUT_V2_STORAGE_KEY = "workoutData_v2";
 const WORKOUT_V2_CODES = ["A", "B", "C", "D", "E", "F"];
 const WORKOUT_V2_VIEWS = ["Log", "Templates", "History", "Progress", "Import / Export"];
+const WORKOUT_V2_PAGE_SIZE = 10;
 const workoutV2UiState = {
   data: null,
   view: "Log",
@@ -13,6 +14,7 @@ const workoutV2UiState = {
   historyText: "",
   historyFrom: "",
   historyTo: "",
+  pageByView: { Log: 1, Templates: 1, History: 1, Progress: 1 },
   progressExercise: "",
   importPreview: null,
   importText: "",
@@ -204,6 +206,28 @@ function workoutV2Routine(code) {
 
 function workoutV2Session(id) {
   return workoutV2Data().sessions.find((session) => session.id === id) || null;
+}
+
+function workoutV2Paginate(items, view) {
+  const list = Array.isArray(items) ? items : [];
+  const totalPages = Math.max(1, Math.ceil(list.length / WORKOUT_V2_PAGE_SIZE));
+  const requested = Number(workoutV2UiState.pageByView[view]) || 1;
+  const page = Math.min(totalPages, Math.max(1, requested));
+  workoutV2UiState.pageByView[view] = page;
+  const start = (page - 1) * WORKOUT_V2_PAGE_SIZE;
+  return { items: list.slice(start, start + WORKOUT_V2_PAGE_SIZE), page, totalPages, start };
+}
+
+function workoutV2RenderPagination(view, total) {
+  const totalPages = Math.max(1, Math.ceil((Number(total) || 0) / WORKOUT_V2_PAGE_SIZE));
+  const page = Math.min(totalPages, Math.max(1, Number(workoutV2UiState.pageByView[view]) || 1));
+  workoutV2UiState.pageByView[view] = page;
+  if ((Number(total) || 0) <= WORKOUT_V2_PAGE_SIZE) return "";
+  return `<div class="workout-v2-pagination" aria-label="${workoutV2Escape(view)} pagination">
+    <button type="button" data-action="page" data-page-view="${workoutV2Escape(view)}" data-page="${page - 1}"${page <= 1 ? " disabled" : ""}>Previous</button>
+    <span>Page ${page} of ${totalPages}</span>
+    <button type="button" data-action="page" data-page-view="${workoutV2Escape(view)}" data-page="${page + 1}"${page >= totalPages ? " disabled" : ""}>Next</button>
+  </div>`;
 }
 
 function getWorkoutDraftForDate(dateKey) {
@@ -499,6 +523,7 @@ async function loadWorkoutV2BackendState() {
     } else {
       workoutV2SetData({ version: 2, routines: remoteRoutines, sessions: remoteSessions });
     }
+    await workoutV2ReconcileAllDates();
     workoutV2SetStatus("Loaded from Supabase.");
   } catch (error) {
     console.warn("Workout V2 backend unavailable; using local data:", error);
@@ -543,11 +568,11 @@ function workoutV2RenderEmptyLog() {
   </section>`;
 }
 
-function workoutV2RenderEntryRow(entry, index, completed) {
+function workoutV2RenderEntryRow(entry, index, completed, displayIndex = index) {
   const disabled = completed ? " disabled" : "";
   const numberInput = (field, value, attrs) => `<input type="number" data-entry-index="${index}" data-entry-field="${field}" value="${value == null ? "" : workoutV2Escape(value)}" ${attrs || ""}${disabled}>`;
   return `<tr data-entry-id="${workoutV2Escape(entry.id)}">
-    <td>${index + 1}</td>
+    <td>${displayIndex + 1}</td>
     <td><input data-entry-index="${index}" data-entry-field="setOrder" value="${workoutV2Escape(entry.setOrder)}"${disabled}></td>
     <td><input data-entry-index="${index}" data-entry-field="exerciseName" value="${workoutV2Escape(entry.exerciseName)}" list="workoutV2ExerciseNames"${disabled}></td>
     <td>${numberInput("weightKg", entry.weightKg, 'min="0" step="0.01"')}</td>
@@ -571,6 +596,7 @@ function workoutV2RenderLog() {
   const session = workoutV2Session(workoutV2UiState.selectedSessionId);
   if (!session) return workoutV2RenderEmptyLog();
   const completed = session.status === "completed";
+  const entryPage = workoutV2Paginate(session.entries, "Log");
   return `<section class="workout-v2-panel workout-v2-log">
     <div class="workout-v2-panel-heading"><h3>Workout log</h3><span class="workout-v2-status workout-v2-status--${session.status}">${session.status}</span></div>
     <div class="workout-v2-form-grid">
@@ -583,8 +609,9 @@ function workoutV2RenderLog() {
     <label class="workout-v2-block-label">Workout notes<textarea data-session-field="workoutNotes" rows="2"${completed ? " disabled" : ""}>${workoutV2Escape(session.workoutNotes)}</textarea></label>
     <div class="workout-v2-table-wrap"><table class="workout-v2-table workout-v2-entry-table">
       <thead><tr><th>#</th><th>Set order</th><th>Exercise</th><th>kg</th><th>Reps</th><th>RPE</th><th>Meters</th><th>Seconds</th><th>Notes</th><th></th></tr></thead>
-      <tbody>${session.entries.map((entry, index) => workoutV2RenderEntryRow(entry, index, completed)).join("")}</tbody>
+      <tbody>${entryPage.items.map((entry, index) => workoutV2RenderEntryRow(entry, entryPage.start + index, completed, entryPage.start + index)).join("")}</tbody>
     </table></div>
+    ${workoutV2RenderPagination("Log", session.entries.length)}
     <datalist id="workoutV2ExerciseNames">${workoutV2ExerciseNames().map((name) => `<option value="${workoutV2Escape(name)}"></option>`).join("")}</datalist>
     <div class="workout-v2-actions">
       ${completed ? '<button type="button" data-action="reopen">Reopen workout</button>' : '<button type="button" data-action="add-entry">Add entry</button><button type="button" class="workout-v2-primary" data-action="finish">Finish workout</button>'}
@@ -610,6 +637,7 @@ function workoutV2RenderTemplateRow(exercise, index) {
 
 function workoutV2RenderTemplates() {
   const routine = workoutV2Routine(workoutV2UiState.templateCode);
+  const exercisePage = workoutV2Paginate(routine.exercises, "Templates");
   return `<section class="workout-v2-panel">
     <div class="workout-v2-form-row">
       <label>Template<select id="workoutV2TemplateCode">${workoutV2RoutineOptions(routine.code, false)}</select></label>
@@ -617,8 +645,9 @@ function workoutV2RenderTemplates() {
     </div>
     <div class="workout-v2-table-wrap"><table class="workout-v2-table">
       <thead><tr><th>#</th><th>Exercise</th><th>Target sets</th><th>Target reps</th><th>Target kg</th><th>Rest sec</th><th>Notes</th><th></th></tr></thead>
-      <tbody>${routine.exercises.map(workoutV2RenderTemplateRow).join("")}</tbody>
+      <tbody>${exercisePage.items.map((exercise, index) => workoutV2RenderTemplateRow(exercise, exercisePage.start + index)).join("")}</tbody>
     </table></div>
+    ${workoutV2RenderPagination("Templates", routine.exercises.length)}
     <datalist id="workoutV2ExerciseNames">${workoutV2ExerciseNames().map((name) => `<option value="${workoutV2Escape(name)}"></option>`).join("")}</datalist>
     <div class="workout-v2-actions"><button type="button" data-action="add-template-entry">Add exercise</button></div>
   </section>`;
@@ -636,7 +665,9 @@ function workoutV2FilteredHistory() {
 }
 
 function workoutV2RenderHistory() {
-  const rows = workoutV2FilteredHistory();
+  const allRows = workoutV2FilteredHistory();
+  const page = workoutV2Paginate(allRows, "History");
+  const rows = page.items;
   return `<section class="workout-v2-panel">
     <div class="workout-v2-form-row workout-v2-filters">
       <label class="workout-v2-grow">Text, routine, or exercise<input id="workoutV2HistoryText" value="${workoutV2Escape(workoutV2UiState.historyText)}"></label>
@@ -653,6 +684,7 @@ function workoutV2RenderHistory() {
         <td><button type="button" data-action="open-session" data-session-id="${workoutV2Escape(session.id)}">Open</button></td>
       </tr>`).join("") || '<tr><td colspan="9">No workouts match these filters.</td></tr>'}</tbody>
     </table></div>
+    ${workoutV2RenderPagination("History", allRows.length)}
   </section>`;
 }
 
@@ -674,6 +706,7 @@ function workoutV2RenderProgress() {
   if (!workoutV2UiState.progressExercise && names.length) workoutV2UiState.progressExercise = names[0];
   const exercise = workoutV2UiState.progressExercise;
   const rows = workoutV2ProgressRows(exercise);
+  const page = workoutV2Paginate(rows, "Progress");
   const weights = rows.map((row) => row.entry.weightKg).filter((value) => value != null);
   const volumes = rows.map((row) => row.volume).filter((value) => value != null);
   const bestWeight = weights.length ? Math.max(...weights) : null;
@@ -683,8 +716,9 @@ function workoutV2RenderProgress() {
     <div class="workout-v2-metrics"><div><strong>Best weight</strong><span>${bestWeight == null ? "—" : `${workoutV2Escape(bestWeight)} kg`}</span></div><div><strong>Recorded volume</strong><span>${volumes.length ? `${workoutV2Escape(totalVolume.toFixed(2))} kg` : "—"}</span></div><div><strong>Recent rows</strong><span>${rows.length}</span></div></div>
     <div class="workout-v2-table-wrap"><table class="workout-v2-table">
       <thead><tr><th>Date</th><th>Workout</th><th>Set</th><th>kg</th><th>Reps</th><th>RPE</th><th>Volume</th><th>Notes</th></tr></thead>
-      <tbody>${rows.slice(0, 100).map(({ session, entry, volume }) => `<tr><td>${workoutV2Escape(session.dateKey)}</td><td>${workoutV2Escape(session.workoutName)}</td><td>${workoutV2Escape(entry.setOrder)}</td><td>${entry.weightKg ?? "—"}</td><td>${entry.reps ?? "—"}</td><td>${entry.rpe ?? "—"}</td><td>${volume == null ? "—" : workoutV2Escape(volume.toFixed(2))}</td><td>${workoutV2Escape(entry.notes)}</td></tr>`).join("") || '<tr><td colspan="8">No completed strength rows for this exercise.</td></tr>'}</tbody>
+      <tbody>${page.items.map(({ session, entry, volume }) => `<tr><td>${workoutV2Escape(session.dateKey)}</td><td>${workoutV2Escape(session.workoutName)}</td><td>${workoutV2Escape(entry.setOrder)}</td><td>${entry.weightKg ?? "—"}</td><td>${entry.reps ?? "—"}</td><td>${entry.rpe ?? "—"}</td><td>${volume == null ? "—" : workoutV2Escape(volume.toFixed(2))}</td><td>${workoutV2Escape(entry.notes)}</td></tr>`).join("") || '<tr><td colspan="8">No completed strength rows for this exercise.</td></tr>'}</tbody>
     </table></div>
+    ${workoutV2RenderPagination("Progress", rows.length)}
     <p class="workout-v2-help">Note and Rest Timer rows are preserved in history/export but excluded from progress calculations.</p>
   </section>`;
 }
@@ -924,10 +958,20 @@ function workoutV2BindEvents(mount) {
     workoutV2UiState.importPreview = WorkoutCore.parseStrongCsv(workoutV2UiState.importText);
     renderWorkoutV2();
   });
+  if (mount.dataset.workoutV2BindEventsBound === "true") return;
+  mount.dataset.workoutV2BindEventsBound = "true";
   mount.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-action]");
     if (!button) return;
     const action = button.dataset.action;
+    if (action === "page") {
+      const view = button.dataset.pageView;
+      if (view && Object.hasOwn(workoutV2UiState.pageByView, view)) {
+        workoutV2UiState.pageByView[view] = Number(button.dataset.page) || 1;
+        renderWorkoutV2();
+      }
+      return;
+    }
     const session = workoutV2Session(workoutV2UiState.selectedSessionId);
     if (action === "create-draft") {
       const dateKey = document.getElementById("workoutV2NewDate")?.value || workoutV2Today();
