@@ -1639,7 +1639,7 @@ async function refreshBackendModules(options = {}) {
   renderConnectionsStatus();
 }
 
-async function handleBackendSession(session) {
+async function loadBackendSession(session) {
   backendState.session = session;
   updateBackendAuthUi();
 
@@ -1695,6 +1695,24 @@ async function handleBackendSession(session) {
     renderPlanner();
     renderConnectionsStatus();
   }
+}
+
+let backendSessionLoadKey = "";
+let backendSessionLoadPromise = null;
+
+function handleBackendSession(session) {
+  const sessionKey = session
+    ? `${session.user?.id || ""}:${session.expires_at || session.access_token || ""}`
+    : "signed-out";
+  if (sessionKey === backendSessionLoadKey) {
+    return backendSessionLoadPromise || Promise.resolve();
+  }
+
+  backendSessionLoadKey = sessionKey;
+  backendSessionLoadPromise = loadBackendSession(session).finally(() => {
+    backendSessionLoadPromise = null;
+  });
+  return backendSessionLoadPromise;
 }
 
 function getBackendAuthCredentials() {
