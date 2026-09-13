@@ -3,6 +3,8 @@ const assert = require("node:assert/strict");
 
 const {
   computeExerciseProgress,
+  computeExerciseSeries,
+  computeWorkoutSummary,
   createWorkoutDraft,
   exportStrongCsv,
   finishWorkoutSession,
@@ -82,24 +84,49 @@ test("exports Strong-compatible CSV without losing entry fields", () => {
   });
 });
 
-test("imports Strong workouts idempotently and preserves numeric entry data", () => {
+test("repeat Strong imports refresh existing sessions and preserve numeric entry data", () => {
   const parsed = parseStrongCsv([
     '"Workout #";"Date";"Workout Name";"Duration (sec)";"Exercise Name";"Set Order";"Weight (kg)";"Reps";"RPE";"Distance (meters)";"Seconds";"Notes";"Workout Notes"',
     '"1";"2026-09-02 16:40:48";"Beta";"3134";"T Bar Row";"F";"40.0";"8";"9.5";"";"150.0";"strap";"Qui"',
   ].join("\n"));
 
   const first = importStrongWorkouts({ version: 2, routines: [], sessions: [] }, parsed.workouts);
+  first.data.sessions[0].entries = first.data.sessions[0].entries.slice(0, 0);
   const second = importStrongWorkouts(first.data, parsed.workouts);
 
   assert.equal(first.imported, 1);
+  assert.equal(first.updated, 0);
   assert.equal(first.skipped, 0);
   assert.equal(second.imported, 0);
-  assert.equal(second.skipped, 1);
+  assert.equal(second.updated, 1);
+  assert.equal(second.skipped, 0);
   assert.equal(second.data.sessions.length, 1);
   assert.equal(second.data.sessions[0].status, "completed");
   assert.equal(second.data.sessions[0].routineCode, "B");
   assert.equal(second.data.sessions[0].entries[0].weightKg, 40);
   assert.equal(second.data.sessions[0].entries[0].rpe, 9.5);
+});
+
+test("builds per-session e1RM, set, load, and volume series", () => {
+  const data = { version: 2, routines: [], sessions: [{
+    id: "one", dateKey: "2026-09-01", startedAt: "2026-09-01T10:00:00", status: "completed",
+    workoutName: "Upper", durationSeconds: 3600, entries: [
+      { exerciseName: "Bench", setOrder: "1", weightKg: 80, reps: 8 },
+      { exerciseName: "Bench", setOrder: "2", weightKg: 85, reps: 5 },
+      { exerciseName: "Bench", setOrder: "Rest Timer", seconds: 120 },
+    ],
+  }] };
+
+  const series = computeExerciseSeries(data, "bench");
+  assert.equal(series.length, 1);
+  assert.equal(series[0].workingSets, 2);
+  assert.equal(series[0].maxWeightKg, 85);
+  assert.equal(series[0].volumeKg, 1065);
+  assert.ok(Math.abs(series[0].estimated1rmKg - 101.333333) < 0.001);
+  assert.deepEqual(computeWorkoutSummary(data), {
+    sessions: 1, rows: 3, workingSets: 2, volumeKg: 1065,
+    durationSeconds: 3600, exercises: 1, firstDate: "2026-09-01", lastDate: "2026-09-01",
+  });
 });
 
 test("drafts do not count for Physique until explicitly finished", () => {

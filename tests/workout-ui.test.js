@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const root = path.join(__dirname, "..");
 
-test("Workout V2 browser module is loaded and exposes the complete workflow", () => {
+test("Workout browser module is an import-driven Strong analytics companion", () => {
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
   const app = fs.readFileSync(path.join(root, "workout-v2.js"), "utf8");
 
@@ -14,7 +14,7 @@ test("Workout V2 browser module is loaded and exposes the complete workflow", ()
   assert.ok(html.indexOf("workout-core.js") < html.indexOf("startpage.js"));
   assert.ok(html.indexOf("startpage.js") < html.indexOf("workout-v2.js"));
 
-  for (const label of ["Log", "Templates", "History", "Progress", "Import / Export"]) {
+  for (const label of ["Overview", "History", "Exercises", "Import"]) {
     assert.ok(app.includes(label), `missing ${label} view`);
   }
   for (const hook of [
@@ -25,9 +25,16 @@ test("Workout V2 browser module is loaded and exposes the complete workflow", ()
   ]) {
     assert.match(app, new RegExp(`function ${hook}\\b`));
   }
-  assert.match(app, /Finish workout/);
+  assert.match(app, /const WORKOUT_V2_VIEWS = \["Overview", "History", "Exercises", "Import"\]/);
+  assert.match(app, /computeExerciseSeries/);
+  assert.match(app, /Estimated 1RM/);
+  assert.match(app, /Strong remains where you log workouts/);
   assert.match(app, /parseStrongCsv/);
-  assert.match(app, /exportStrongCsv/);
+  assert.match(app, /function workoutV2DeleteAllData/);
+  assert.match(app, /DELETE WORKOUT DATA/);
+  assert.match(app, /await workoutV2ReconcileDate\(dateKey\)/);
+  assert.match(app, /recalculateGamifySkillXp\("fitness"\)/);
+  assert.match(app, /Your Strong app data (?:will|was) not (?:be )?changed/);
 });
 
 test("Gamify delegates Physique dates to Workout V2", () => {
@@ -48,4 +55,7 @@ test("Workout cloud history loads through the feature sync lifecycle", () => {
     /function renderWorkoutV2\(\) \{([\s\S]*?)\n\}\n\nfunction workoutV2OpenWindow/,
   )?.[1] || "";
   assert.doesNotMatch(renderFunction, /loadWorkoutV2BackendState/);
+  assert.match(workout, /function workoutV2FetchSessionEntries/);
+  assert.match(workout, /\.range\(from, from \+ pageSize - 1\)/);
+  assert.match(workout, /workoutV2Chunks\(sessionIds, 40\)/);
 });

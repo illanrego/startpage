@@ -135,18 +135,24 @@
 
   function importStrongWorkouts(data, workouts) {
     const next = cloneWorkoutData(data);
-    const existing = new Set(next.sessions.map((session) => session.externalKey).filter(Boolean));
+    const existing = new Map(next.sessions
+      .map((session, index) => [session.externalKey, index])
+      .filter(([externalKey]) => Boolean(externalKey)));
     let imported = 0;
+    let updated = 0;
     let skipped = 0;
 
     (Array.isArray(workouts) ? workouts : []).forEach((workout) => {
-      if (!workout || !workout.externalKey || existing.has(workout.externalKey)) {
+      if (!workout || !workout.externalKey) {
         skipped += 1;
         return;
       }
       const startedAt = String(workout.date || "").replace(" ", "T");
-      next.sessions.push({
-        id: workout.externalKey,
+      const existingIndex = existing.get(workout.externalKey);
+      const previous = existingIndex == null ? null : next.sessions[existingIndex];
+      const session = {
+        id: previous?.id || workout.externalKey,
+        remoteId: previous?.remoteId || "",
         externalKey: workout.externalKey,
         externalWorkoutNumber: String(workout.externalWorkoutNumber || ""),
         dateKey: String(workout.date || "").slice(0, 10),
@@ -169,12 +175,101 @@
           seconds: nullableNumber(entry.seconds),
           notes: String(entry.notes || ""),
         })),
-      });
-      existing.add(workout.externalKey);
-      imported += 1;
+      };
+      if (existingIndex == null) {
+        existing.set(workout.externalKey, next.sessions.length);
+        next.sessions.push(session);
+        imported += 1;
+      } else {
+        next.sessions[existingIndex] = session;
+        updated += 1;
+      }
     });
 
-    return { data: next, imported, skipped };
+    return { data: next, imported, updated, skipped };
+  }
+
+  function isProgressEntry(entry) {
+    const setOrder = String(entry?.setOrder || "").trim().toLocaleLowerCase();
+    return !["note", "rest timer"].includes(setOrder);
+  }
+
+  function estimatedOneRepMax(weightKg, reps) {
+    const weight = nullableNumber(weightKg);
+    const repetitions = nullableNumber(reps);
+    if (weight == null || weight <= 0 || repetitions == null || repetitions <= 0) return null;
+    if (repetitions === 1) return weight;
+    return weight * (1 + repetitions / 30);
+  }
+
+  function computeExerciseSeries(data, exerciseName) {
+    const target = String(exerciseName || "").trim().toLocaleLowerCase();
+    const sessions = new Map();
+    cloneWorkoutData(data).sessions.forEach((session) => {
+      if (session.status !== "completed") return;
+      const matching = session.entries.filter((entry) =>
+        String(entry.exerciseName || "").trim().toLocaleLowerCase() === target && isProgressEntry(entry));
+      if (!matching.length) return;
+      let workingSets = 0;
+      let volumeKg = 0;
+      let maxWeightKg = null;
+      let estimated1rmKg = null;
+      matching.forEach((entry) => {
+        const weight = nullableNumber(entry.weightKg);
+        const reps = nullableNumber(entry.reps);
+        if (weight != null || reps != null || nullableNumber(entry.seconds) != null || nullableNumber(entry.distanceMeters) != null) {
+          workingSets += 1;
+        }
+        if (weight != null) maxWeightKg = maxWeightKg == null ? weight : Math.max(maxWeightKg, weight);
+        if (weight != null && reps != null) volumeKg += weight * reps;
+        const estimate = estimatedOneRepMax(weight, reps);
+        if (estimate != null) estimated1rmKg = estimated1rmKg == null ? estimate : Math.max(estimated1rmKg, estimate);
+      });
+      const key = session.id || session.externalKey || `${session.startedAt}:${session.workoutName}`;
+      sessions.set(key, {
+        sessionId: session.id || "",
+        dateKey: session.dateKey || String(session.startedAt || "").slice(0, 10),
+        startedAt: session.startedAt || "",
+        workoutName: session.workoutName || "Workout",
+        workingSets,
+        volumeKg,
+        maxWeightKg,
+        estimated1rmKg,
+      });
+    });
+    return Array.from(sessions.values()).sort((a, b) => String(a.startedAt).localeCompare(String(b.startedAt)));
+  }
+
+  function computeWorkoutSummary(data) {
+    const completed = cloneWorkoutData(data).sessions.filter((session) => session.status === "completed");
+    const exerciseNames = new Set();
+    let rows = 0;
+    let workingSets = 0;
+    let volumeKg = 0;
+    let durationSeconds = 0;
+    completed.forEach((session) => {
+      durationSeconds += nullableNumber(session.durationSeconds) || 0;
+      session.entries.forEach((entry) => {
+        if (entry.exerciseName) exerciseNames.add(String(entry.exerciseName).trim());
+        rows += 1;
+        if (!isProgressEntry(entry)) return;
+        const weight = nullableNumber(entry.weightKg);
+        const reps = nullableNumber(entry.reps);
+        if (weight != null || reps != null || nullableNumber(entry.seconds) != null || nullableNumber(entry.distanceMeters) != null) workingSets += 1;
+        if (weight != null && reps != null) volumeKg += weight * reps;
+      });
+    });
+    const ordered = completed.sort((a, b) => String(a.startedAt || "").localeCompare(String(b.startedAt || "")));
+    return {
+      sessions: completed.length,
+      rows,
+      workingSets,
+      volumeKg,
+      durationSeconds,
+      exercises: exerciseNames.size,
+      firstDate: ordered[0]?.dateKey || "",
+      lastDate: ordered[ordered.length - 1]?.dateKey || "",
+    };
   }
 
   function createWorkoutDraft(data, options) {
@@ -240,7 +335,7 @@
       if (session.status !== "completed") return;
       session.entries.forEach((entry) => {
         if (String(entry.exerciseName || "").trim().toLocaleLowerCase() !== target) return;
-        if (["note", "rest timer"].includes(String(entry.setOrder || "").trim().toLocaleLowerCase())) return;
+        if (!isProgressEntry(entry)) return;
         const weightKg = nullableNumber(entry.weightKg);
         const reps = nullableNumber(entry.reps);
         if (weightKg == null && reps == null) return;
@@ -340,12 +435,15 @@
   return {
     STRONG_HEADERS,
     computeExerciseProgress,
+    computeExerciseSeries,
+    computeWorkoutSummary,
     createWorkoutDraft,
     exportStrongCsv,
     finishWorkoutSession,
     getFitnessTrackerValueForDate,
     importStrongWorkouts,
     inferRoutineCode,
+    estimatedOneRepMax,
     parseStrongCsv,
   };
 });

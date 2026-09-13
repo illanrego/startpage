@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>illan's hub</title>
     <link rel="stylesheet" href="startpage.css?v=20260902-workout-v2" />
-    <link rel="stylesheet" href="workout-v2.css?v=20260902-workout-v2" />
+    <link rel="stylesheet" href="workout-v2.css?v=20260913-workout-analytics" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400&display=swap">
     <link rel="stylesheet" href="win98.ttf">
     <link rel="icon" href="./imagens/debianlogo.png">
     <script src="config.js?v=20260624-cloud-worker"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-    <script src="workout-core.js?v=20260902-workout-v2" defer></script>
+    <script src="workout-core.js?v=20260913-workout-analytics" defer></script>
     <script src="startpage.js?v=20260902-workout-v2" defer></script>
-    <script src="workout-v2.js?v=20260902-workout-v2" defer></script>
+    <script src="workout-v2.js?v=20260913-workout-analytics" defer></script>
   </head>
   <body>
     <div id="bgContainer"  style="background-image: url('./imagens/windowsgreen.png')";>
@@ -681,33 +681,39 @@
       <button id="financeSpentTabBtn" class="finance-tab-btn" type="button" data-target="financeSpentSection" role="tab" aria-selected="false">Spent</button>
     </div>
     <div id="financeLogsSection" class="finance-section finance-section--active" role="tabpanel">
-      <div class="finance-section-heading">balance</div>
-      <div id="financeBalancePanel">
-        <div id="financeBalanceControls">
-          <label for="financeOpeningDateInput">opening date</label>
-          <input type="date" id="financeOpeningDateInput">
-          <label for="financeOpeningAmountInput">opening amount</label>
-          <input type="number" id="financeOpeningAmountInput" step="0.01" placeholder="R$ 0,00">
-          <button id="financeOpeningBalanceSaveBtn" type="button">save</button>
-          <button id="financeBalanceReconcileBtn" type="button">reconcile</button>
-        </div>
-        <div id="financeBalanceSummary" aria-live="polite">
-          <span>current balance: <strong id="financeCurrentBalance">Set starting balance</strong></span>
-          <span>projected month-end balance: <strong id="financeProjectedMonthEndBalance">Set starting balance</strong></span>
-        </div>
-        <div id="financeBalanceEmptyState">Set starting balance to calculate current money across all finance logs.</div>
-      </div>
-      <div class="finance-section-heading">new log</div>
+      <div class="finance-section-heading">quick log</div>
       <div id="financeForm">
-        <input type="date" id="financeDateInput">
-        <select id="financeTypeInput">
-          <option value="income">income</option>
-          <option value="expense">expense</option>
-        </select>
-        <select id="financeCategoryInput"></select>
-        <input type="number" id="financeAmountInput" step="0.01" min="0" placeholder="Amount">
-        <input type="text" id="financeNoteInput" placeholder="Note">
-        <button id="financeAddBtn" type="button">+</button>
+        <div id="financeTypeToggle" role="group" aria-label="Log type">
+          <button id="financeExpenseTypeBtn" class="finance-type-btn finance-type-btn--active" type="button" data-finance-type="expense" aria-pressed="true">Expense</button>
+          <button id="financeIncomeTypeBtn" class="finance-type-btn" type="button" data-finance-type="income" aria-pressed="false">Income</button>
+          <select id="financeTypeInput" aria-hidden="true" tabindex="-1">
+            <option value="expense" selected>expense</option>
+            <option value="income">income</option>
+          </select>
+        </div>
+        <label class="finance-entry-field finance-amount-field" for="financeAmountInput">
+          <span>How much?</span>
+          <span class="finance-amount-input-wrap">
+            <span class="finance-currency-prefix">R$</span>
+            <input type="number" id="financeAmountInput" step="0.01" min="0.01" inputmode="decimal" placeholder="0,00">
+          </span>
+        </label>
+        <label class="finance-entry-field finance-note-field" for="financeNoteInput">
+          <span>What was it? <small>optional</small></span>
+          <input type="text" id="financeNoteInput" placeholder="e.g. groceries">
+        </label>
+        <fieldset id="financeCategoryPicker">
+          <legend>Category</legend>
+          <div id="financeCategoryChips"></div>
+          <select id="financeCategoryInput" aria-label="Selected expense category" hidden></select>
+        </fieldset>
+        <details id="financeEntryDetails">
+          <summary>Change date</summary>
+          <label for="financeDateInput">Transaction date</label>
+          <input type="date" id="financeDateInput">
+        </details>
+        <button id="financeAddBtn" type="button">Save expense</button>
+        <p id="financeEntryStatus" role="status" aria-live="polite">Expense selected. Add an amount and choose a category.</p>
       </div>
       <div id="financeTotals" aria-live="polite">
         <span>income: <strong id="financeIncomeTotal">R$ 0,00</strong></span>
@@ -716,6 +722,24 @@
       </div>
       <div class="finance-section-heading">month logs</div>
       <ul id="financeList"></ul>
+      <details id="financeBalanceDetails">
+        <summary>Balance setup and reconciliation</summary>
+        <div id="financeBalancePanel">
+          <div id="financeBalanceControls">
+            <label for="financeOpeningDateInput">opening date</label>
+            <input type="date" id="financeOpeningDateInput">
+            <label for="financeOpeningAmountInput">opening amount</label>
+            <input type="number" id="financeOpeningAmountInput" step="0.01" placeholder="R$ 0,00">
+            <button id="financeOpeningBalanceSaveBtn" type="button">save</button>
+            <button id="financeBalanceReconcileBtn" type="button">reconcile</button>
+          </div>
+          <div id="financeBalanceSummary" aria-live="polite">
+            <span>current balance: <strong id="financeCurrentBalance">Set starting balance</strong></span>
+            <span>projected month-end balance: <strong id="financeProjectedMonthEndBalance">Set starting balance</strong></span>
+          </div>
+          <div id="financeBalanceEmptyState">Set starting balance to calculate current money across all finance logs.</div>
+        </div>
+      </details>
     </div>
     <div id="financeBudgetSection" class="finance-section" role="tabpanel" hidden>
       <div id="financeBudgetPanel">

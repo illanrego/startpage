@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const test = require("node:test");
 
 const appSource = fs.readFileSync("startpage.js", "utf8");
+const htmlSource = fs.readFileSync("index.html", "utf8");
 const schemaSource = fs.readFileSync(
   "supabase/migrations/20260530000000_core_app_schema.sql",
   "utf8",
@@ -34,6 +35,18 @@ test("Finance sync remains available on demand", () => {
   );
   assert.match(appSource, /const BACKEND_SYNC_ALL_CONTAINER_IDS = \[[\s\S]*?"financeContainer"/);
   assert.match(appSource, /syncFeatureForContainer\(containerId, \{ force: true \}\)/);
+});
+
+test("Finance quick log is expense-first with optional details", () => {
+  assert.match(htmlSource, /data-finance-type="expense"[^>]*aria-pressed="true"/);
+  assert.match(htmlSource, /id="financeAmountInput"[^>]*inputmode="decimal"/);
+  assert.match(htmlSource, /id="financeCategoryChips"/);
+  assert.match(htmlSource, /<summary>Change date<\/summary>/);
+  assert.match(htmlSource, /id="financeAddBtn"[^>]*>Save expense<\/button>/);
+  assert.match(htmlSource, /id="financeBalanceDetails"/);
+  assert.match(appSource, /noteInput\.value\.trim\(\) \|\|/);
+  assert.match(appSource, /FINANCE_LAST_CATEGORY_STORAGE_KEY/);
+  assert.match(appSource, /setFinanceEntryStatus\(`\$\{typeLabel\} of \$\{formatFinanceAmount\(amount\)\} saved\.`/);
 });
 
 test("Finance logs use an owned Supabase table for CRUD and cross-device reads", () => {

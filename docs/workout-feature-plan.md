@@ -1,5 +1,12 @@
 # Startpage Workout Feature Plan
 
+> Superseded on 2026-09-13: Startpage is now a read-only analytics companion to Strong, not a
+> workout logger or Strong replacement. The active UI imports repeat Strong CSV exports, refreshes
+> matching sessions, feeds completed dates into Gamify/Physique, and provides history plus exercise
+> progression analytics. Its typed-confirmation deletion removes Workout history from local/Supabase
+> storage and reconciles the corresponding Physique calendar and Fitness XP. The original
+> implementation plan below is retained as historical context.
+
 Created: 2026-09-02
 
 ## Name

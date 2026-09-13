@@ -2,11 +2,11 @@
 
 const WORKOUT_V2_STORAGE_KEY = "workoutData_v2";
 const WORKOUT_V2_CODES = ["A", "B", "C", "D", "E", "F"];
-const WORKOUT_V2_VIEWS = ["Log", "Templates", "History", "Progress", "Import / Export"];
+const WORKOUT_V2_VIEWS = ["Overview", "History", "Exercises", "Import"];
 const WORKOUT_V2_PAGE_SIZE = 10;
 const workoutV2UiState = {
   data: null,
-  view: "Log",
+  view: "Overview",
   selectedSessionId: "",
   pendingDateKey: "",
   pendingRoutineCode: "A",
@@ -14,8 +14,10 @@ const workoutV2UiState = {
   historyText: "",
   historyFrom: "",
   historyTo: "",
-  pageByView: { Log: 1, Templates: 1, History: 1, Progress: 1 },
+  pageByView: { History: 1, Exercises: 1 },
   progressExercise: "",
+  progressMetric: "estimated1rmKg",
+  progressRange: "all",
   importPreview: null,
   importText: "",
   syncMessage: "",
@@ -231,9 +233,7 @@ function workoutV2RenderPagination(view, total) {
 }
 
 function getWorkoutDraftForDate(dateKey) {
-  return workoutV2Data().sessions
-    .filter((session) => session.dateKey === String(dateKey || "").slice(0, 10) && session.status === "draft")
-    .sort((a, b) => String(b.startedAt).localeCompare(String(a.startedAt)))[0] || null;
+  return null;
 }
 
 function workoutV2TemplateEntries(routine) {
@@ -408,6 +408,121 @@ async function workoutV2SyncSession(session) {
   if (rows.length) workoutV2DbResult(await backendState.client.from("workout_session_entries").insert(rows));
 }
 
+function workoutV2Chunks(items, size) {
+  const chunks = [];
+  for (let index = 0; index < items.length; index += size) chunks.push(items.slice(index, index + size));
+  return chunks;
+}
+
+async function workoutV2FetchSessions(userId) {
+  const rows = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const page = workoutV2DbResult(await backendState.client.from("workout_sessions")
+      .select("id, routine_id, routine_code, workout_name, status, workout_date, started_at, duration_seconds, workout_notes, source, external_workout_number, external_key, completed_at")
+      .eq("user_id", userId)
+      .order("started_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1));
+    rows.push(...(page || []));
+    if (!page || page.length < pageSize) break;
+  }
+  return rows;
+}
+
+async function workoutV2FetchSessionEntries(userId, sessionIds) {
+  const rows = [];
+  const pageSize = 1000;
+  for (const ids of workoutV2Chunks(sessionIds, 40)) {
+    for (let from = 0; ; from += pageSize) {
+      const page = workoutV2DbResult(await backendState.client.from("workout_session_entries")
+        .select("id, workout_session_id, exercise_name, entry_order, set_order, weight_kg, reps, rpe, distance_meters, seconds, notes")
+        .eq("user_id", userId)
+        .in("workout_session_id", ids)
+        .order("workout_session_id", { ascending: true })
+        .order("entry_order", { ascending: true })
+        .range(from, from + pageSize - 1));
+      rows.push(...(page || []));
+      if (!page || page.length < pageSize) break;
+    }
+  }
+  return rows;
+}
+
+async function workoutV2EnsureExerciseIds(sessions) {
+  const names = new Map();
+  sessions.forEach((session) => session.entries.forEach((entry) => {
+    const name = String(entry.exerciseName || "").trim();
+    if (name) names.set(name.toLocaleLowerCase(), name);
+  }));
+  for (const [key, name] of names) {
+    if (!workoutRemoteState.exerciseIdsByName[key]) await upsertBackendWorkoutExercise(name);
+  }
+}
+
+function workoutV2SessionPayload(session, userId) {
+  return {
+    user_id: userId,
+    routine_id: null,
+    routine_code: session.routineCode || null,
+    workout_name: session.workoutName || "Workout",
+    status: "completed",
+    workout_date: session.dateKey,
+    started_at: session.startedAt || `${session.dateKey}T12:00:00`,
+    duration_seconds: session.durationSeconds,
+    workout_notes: session.workoutNotes || "",
+    source: "strong_import",
+    external_workout_number: session.externalWorkoutNumber || null,
+    external_key: session.externalKey,
+    completed_at: session.completedAt || session.startedAt || new Date().toISOString(),
+  };
+}
+
+async function workoutV2SyncImportedSessions(sessions) {
+  if (!workoutV2UiState.remoteAvailable || !workoutV2HasBackend() || !sessions.length) return;
+  const userId = getBackendUserId();
+  await workoutV2EnsureExerciseIds(sessions);
+  const remoteIdByKey = new Map();
+  for (const chunk of workoutV2Chunks(sessions, 100)) {
+    const saved = workoutV2DbResult(await backendState.client.from("workout_sessions")
+      .upsert(chunk.map((session) => workoutV2SessionPayload(session, userId)), { onConflict: "user_id,external_key" })
+      .select("id, external_key"));
+    (saved || []).forEach((row) => remoteIdByKey.set(row.external_key, row.id));
+  }
+  sessions.forEach((session) => { session.remoteId = remoteIdByKey.get(session.externalKey) || session.remoteId; });
+  const remoteIds = Array.from(remoteIdByKey.values());
+  for (const ids of workoutV2Chunks(remoteIds, 40)) {
+    workoutV2DbResult(await backendState.client.from("workout_session_entries")
+      .delete().eq("user_id", userId).in("workout_session_id", ids));
+  }
+  const entryRows = [];
+  sessions.forEach((session) => {
+    const sessionId = remoteIdByKey.get(session.externalKey);
+    if (!sessionId) return;
+    session.entries.forEach((entry, entryOrder) => {
+      const exerciseName = String(entry.exerciseName || "").trim();
+      if (!exerciseName) return;
+      entryRows.push({
+        user_id: userId,
+        workout_session_id: sessionId,
+        exercise_id: workoutRemoteState.exerciseIdsByName[exerciseName.toLocaleLowerCase()] || null,
+        exercise_name: exerciseName,
+        entry_order: entryOrder,
+        set_order: String(entry.setOrder || entryOrder + 1),
+        weight_kg: entry.weightKg,
+        reps: entry.reps,
+        rpe: entry.rpe,
+        distance_meters: entry.distanceMeters,
+        seconds: entry.seconds,
+        notes: entry.notes || "",
+      });
+    });
+  });
+  for (const chunk of workoutV2Chunks(entryRows, 500)) {
+    workoutV2DbResult(await backendState.client.from("workout_session_entries").insert(chunk));
+  }
+}
+
 async function workoutV2SyncAll() {
   for (const routine of workoutV2Data().routines) await workoutV2SyncRoutine(routine);
   for (const session of workoutV2Data().sessions) await workoutV2SyncSession(session);
@@ -463,36 +578,12 @@ async function loadWorkoutV2BackendState() {
   const localData = workoutV2Data();
   try {
     const userId = getBackendUserId();
-    const planId = await ensureBackendWorkoutPlan();
-    const routineRows = workoutV2DbResult(await backendState.client.from("workout_routines")
-      .select("id, code, name, position, is_active")
-      .eq("user_id", userId).eq("workout_plan_id", planId).order("position", { ascending: true }));
-    const routineIds = (routineRows || []).map((row) => row.id);
-    let routineExerciseRows = [];
-    if (routineIds.length) {
-      routineExerciseRows = workoutV2DbResult(await backendState.client.from("workout_routine_exercises")
-        .select("id, routine_id, exercise_name, position, target_sets, target_reps, target_weight_kg, rest_seconds, notes")
-        .eq("user_id", userId).in("routine_id", routineIds).order("position", { ascending: true }));
-    }
-    const sessionRows = workoutV2DbResult(await backendState.client.from("workout_sessions")
-      .select("id, routine_id, routine_code, workout_name, status, workout_date, started_at, duration_seconds, workout_notes, source, external_workout_number, external_key, completed_at")
-      .eq("user_id", userId).order("started_at", { ascending: false }));
+    const sessionRows = await workoutV2FetchSessions(userId);
     const sessionIds = (sessionRows || []).map((row) => row.id);
     let entryRows = [];
     if (sessionIds.length) {
-      entryRows = workoutV2DbResult(await backendState.client.from("workout_session_entries")
-        .select("id, workout_session_id, exercise_name, entry_order, set_order, weight_kg, reps, rpe, distance_meters, seconds, notes")
-        .eq("user_id", userId).in("workout_session_id", sessionIds).order("entry_order", { ascending: true }));
+      entryRows = await workoutV2FetchSessionEntries(userId, sessionIds);
     }
-    const exerciseByRoutine = new Map();
-    routineExerciseRows.forEach((row) => {
-      if (!exerciseByRoutine.has(row.routine_id)) exerciseByRoutine.set(row.routine_id, []);
-      exerciseByRoutine.get(row.routine_id).push({
-        id: row.id, remoteId: row.id, exerciseName: row.exercise_name, position: row.position,
-        targetSets: row.target_sets, targetReps: row.target_reps, targetWeightKg: row.target_weight_kg,
-        restSeconds: row.rest_seconds, notes: row.notes,
-      });
-    });
     const entriesBySession = new Map();
     entryRows.forEach((row) => {
       if (!entriesBySession.has(row.workout_session_id)) entriesBySession.set(row.workout_session_id, []);
@@ -502,10 +593,6 @@ async function loadWorkoutV2BackendState() {
         distanceMeters: row.distance_meters, seconds: row.seconds, notes: row.notes,
       });
     });
-    const remoteRoutines = routineRows.map((row, index) => ({
-      id: row.id, remoteId: row.id, code: row.code, name: row.name, position: row.position,
-      isActive: row.is_active, exercises: exerciseByRoutine.get(row.id) || [],
-    }));
     const remoteSessions = sessionRows.map((row) => ({
       id: row.id, remoteId: row.id, routineCode: row.routine_code, workoutName: row.workout_name,
       status: row.status, dateKey: row.workout_date, startedAt: row.started_at,
@@ -517,11 +604,10 @@ async function loadWorkoutV2BackendState() {
     workoutV2UiState.remoteLoaded = true;
     workoutRemoteState.v2Loaded = true;
     workoutRemoteState.v2Available = true;
-    if (remoteRoutines.length === 0) {
-      workoutV2SetData({ version: 2, routines: localData.routines, sessions: remoteSessions.length ? remoteSessions : localData.sessions });
-      await workoutV2SyncAll();
-    } else {
-      workoutV2SetData({ version: 2, routines: remoteRoutines, sessions: remoteSessions });
+    workoutV2SetData({ version: 2, routines: localData.routines, sessions: remoteSessions.length ? remoteSessions : localData.sessions });
+    if (!remoteSessions.length) {
+      const localStrongSessions = workoutV2Data().sessions.filter((session) => session.source === "strong_import");
+      if (localStrongSessions.length) await workoutV2SyncImportedSessions(localStrongSessions);
     }
     await workoutV2ReconcileAllDates();
     workoutV2SetStatus("Loaded from Supabase.");
@@ -738,7 +824,7 @@ function workoutV2FilteredHistory() {
   }).sort((a, b) => String(b.startedAt).localeCompare(String(a.startedAt)));
 }
 
-function workoutV2RenderHistory() {
+function workoutV2RenderHistoryLegacy() {
   const allRows = workoutV2FilteredHistory();
   const page = workoutV2Paginate(allRows, "History");
   const rows = page.items;
@@ -776,7 +862,7 @@ function workoutV2ProgressRows(exerciseName) {
   return rows.sort((a, b) => String(b.session.startedAt).localeCompare(String(a.session.startedAt)));
 }
 
-function workoutV2RenderProgress() {
+function workoutV2RenderProgressLegacy() {
   const names = workoutV2ExerciseNames();
   if (!workoutV2UiState.progressExercise && names.length) workoutV2UiState.progressExercise = names[0];
   const exercise = workoutV2UiState.progressExercise;
@@ -799,7 +885,7 @@ function workoutV2RenderProgress() {
   </section>`;
 }
 
-function workoutV2RenderImportExport() {
+function workoutV2RenderImportExportLegacy() {
   const preview = workoutV2UiState.importPreview;
   return `<section class="workout-v2-panel">
     <h3>Strong CSV import</h3>
@@ -813,16 +899,223 @@ function workoutV2RenderImportExport() {
   </section>`;
 }
 
+function workoutV2CompletedSessions() {
+  return workoutV2Data().sessions
+    .filter((session) => session.status === "completed")
+    .sort((a, b) => String(b.startedAt).localeCompare(String(a.startedAt)));
+}
+
+function workoutV2FormatNumber(value, digits) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "—";
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: digits ?? 1 }).format(number);
+}
+
+function workoutV2FormatDuration(seconds) {
+  const total = Number(seconds);
+  if (!Number.isFinite(total) || total <= 0) return "—";
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.round((total % 3600) / 60);
+  return hours ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
+function workoutV2MetricCard(label, value, hint) {
+  return `<div class="workout-v2-metric"><span>${workoutV2Escape(label)}</span><strong>${workoutV2Escape(value)}</strong>${hint ? `<small>${workoutV2Escape(hint)}</small>` : ""}</div>`;
+}
+
+function workoutV2WeeklyCounts(sessions, count) {
+  const weeks = [];
+  const today = new Date(`${workoutV2Today()}T12:00:00`);
+  const day = (today.getDay() + 6) % 7;
+  const currentMonday = new Date(today);
+  currentMonday.setDate(today.getDate() - day);
+  for (let offset = count - 1; offset >= 0; offset--) {
+    const start = new Date(currentMonday);
+    start.setDate(start.getDate() - offset * 7);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    const key = start.toISOString().slice(0, 10);
+    weeks.push({
+      label: key.slice(5),
+      value: sessions.filter((session) => {
+        const date = new Date(`${session.dateKey}T12:00:00`);
+        return date >= start && date < end;
+      }).length,
+    });
+  }
+  return weeks;
+}
+
+function workoutV2BarChart(points, label) {
+  const max = Math.max(1, ...points.map((point) => point.value));
+  return `<div class="workout-v2-bar-chart" role="img" aria-label="${workoutV2Escape(label)}">${points.map((point) => {
+    const height = Math.max(point.value ? 8 : 2, Math.round((point.value / max) * 100));
+    return `<div class="workout-v2-bar-column" title="Week of ${workoutV2Escape(point.label)}: ${point.value}"><span>${point.value || ""}</span><i style="height:${height}%"></i><small>${workoutV2Escape(point.label)}</small></div>`;
+  }).join("")}</div>`;
+}
+
+function workoutV2RenderOverview() {
+  const sessions = workoutV2CompletedSessions();
+  const summary = WorkoutCore.computeWorkoutSummary({ version: 2, routines: [], sessions });
+  const recent = sessions.slice(0, 8);
+  const exerciseCounts = new Map();
+  sessions.forEach((session) => {
+    new Set(session.entries.map((entry) => entry.exerciseName).filter(Boolean)).forEach((name) => {
+      exerciseCounts.set(name, (exerciseCounts.get(name) || 0) + 1);
+    });
+  });
+  const topExercises = Array.from(exerciseCounts, ([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)).slice(0, 8);
+  if (!sessions.length) return `<section class="workout-v2-panel workout-v2-welcome"><h3>Workout analytics</h3><p>Startpage reads your Strong CSV; Strong remains where you log workouts.</p><button type="button" class="workout-v2-primary" data-action="go-import">Import a Strong export</button></section>`;
+  return `<section class="workout-v2-panel">
+    <div class="workout-v2-panel-heading"><div><h3>Training overview</h3><p class="workout-v2-subtitle">Strong data from ${workoutV2Escape(summary.firstDate)} to ${workoutV2Escape(summary.lastDate)}</p></div><button type="button" data-action="go-import">Sync Strong CSV</button></div>
+    <div class="workout-v2-metric-grid">
+      ${workoutV2MetricCard("Workouts", workoutV2FormatNumber(summary.sessions, 0), "completed sessions")}
+      ${workoutV2MetricCard("Working sets", workoutV2FormatNumber(summary.workingSets, 0), `${workoutV2FormatNumber(summary.rows, 0)} total CSV rows`)}
+      ${workoutV2MetricCard("Exercises", workoutV2FormatNumber(summary.exercises, 0), "distinct movements")}
+      ${workoutV2MetricCard("Volume", `${workoutV2FormatNumber(summary.volumeKg, 0)} kg`, "weight × reps")}
+      ${workoutV2MetricCard("Training time", workoutV2FormatDuration(summary.durationSeconds), "recorded by Strong")}
+    </div>
+    <div class="workout-v2-dashboard-grid">
+      <section class="workout-v2-inset"><h4>Workouts per week</h4>${workoutV2BarChart(workoutV2WeeklyCounts(sessions, 12), "Workout count for the last twelve weeks")}</section>
+      <section class="workout-v2-inset"><h4>Most frequent exercises</h4><ol class="workout-v2-ranking">${topExercises.map((item) => `<li><button type="button" data-action="open-exercise" data-exercise="${workoutV2Escape(item.name)}"><span>${workoutV2Escape(item.name)}</span><strong>${item.count}</strong></button></li>`).join("")}</ol></section>
+    </div>
+    <section class="workout-v2-inset"><div class="workout-v2-section-heading"><h4>Recent sessions</h4><button type="button" data-action="go-history">All history</button></div>${workoutV2SessionTable(recent)}</section>
+  </section>`;
+}
+
+function workoutV2SessionTable(sessions) {
+  return `<div class="workout-v2-table-wrap"><table class="workout-v2-table workout-v2-history-table"><thead><tr><th>Date</th><th>Session</th><th>Exercises</th><th>Sets / rows</th><th>Duration</th><th></th></tr></thead><tbody>${sessions.map((session) => `<tr>
+    <td>${workoutV2Escape(session.dateKey)}</td><td>${workoutV2Escape(session.workoutName)}</td>
+    <td>${new Set(session.entries.map((entry) => entry.exerciseName).filter(Boolean)).size}</td><td>${session.entries.length}</td>
+    <td>${workoutV2Escape(workoutV2FormatDuration(session.durationSeconds))}</td><td><button type="button" data-action="open-session" data-session-id="${workoutV2Escape(session.id)}">Details</button></td>
+  </tr>`).join("") || '<tr><td colspan="6">No sessions match these filters.</td></tr>'}</tbody></table></div>`;
+}
+
+function workoutV2RenderHistory() {
+  if (workoutV2UiState.selectedSessionId) return workoutV2RenderSessionDetail(workoutV2Session(workoutV2UiState.selectedSessionId));
+  const text = workoutV2UiState.historyText.trim().toLocaleLowerCase();
+  const all = workoutV2CompletedSessions().filter((session) => {
+    if (workoutV2UiState.historyFrom && session.dateKey < workoutV2UiState.historyFrom) return false;
+    if (workoutV2UiState.historyTo && session.dateKey > workoutV2UiState.historyTo) return false;
+    if (!text) return true;
+    return [session.workoutName, session.routineCode, session.workoutNotes, ...session.entries.map((entry) => entry.exerciseName)]
+      .some((value) => String(value || "").toLocaleLowerCase().includes(text));
+  });
+  const page = workoutV2Paginate(all, "History");
+  return `<section class="workout-v2-panel"><h3>Session history</h3><div class="workout-v2-form-row workout-v2-filters">
+    <label class="workout-v2-grow">Session or exercise<input id="workoutV2HistoryText" value="${workoutV2Escape(workoutV2UiState.historyText)}"></label>
+    <label>From<input id="workoutV2HistoryFrom" type="date" value="${workoutV2Escape(workoutV2UiState.historyFrom)}"></label>
+    <label>To<input id="workoutV2HistoryTo" type="date" value="${workoutV2Escape(workoutV2UiState.historyTo)}"></label>
+    <button type="button" data-action="apply-history-filters">Apply</button><button type="button" data-action="clear-history-filters">Clear</button>
+  </div>${workoutV2SessionTable(page.items)}${workoutV2RenderPagination("History", all.length)}</section>`;
+}
+
+function workoutV2RenderSessionDetail(session) {
+  if (!session) { workoutV2UiState.selectedSessionId = ""; return workoutV2RenderHistory(); }
+  const groups = workoutV2ExerciseGroups(session);
+  const exerciseCount = new Set(session.entries.map((entry) => entry.exerciseName).filter(Boolean)).size;
+  return `<section class="workout-v2-panel"><div class="workout-v2-panel-heading"><div><h3>${workoutV2Escape(session.workoutName)}</h3><p class="workout-v2-subtitle">${workoutV2Escape(session.dateKey)} · ${exerciseCount} exercises · ${session.entries.length} CSV rows · ${workoutV2Escape(workoutV2FormatDuration(session.durationSeconds))}</p></div><button type="button" data-action="close-session">Back to history</button></div>
+    ${session.workoutNotes ? `<div class="workout-v2-session-notes"><strong>Workout notes</strong><p>${workoutV2Escape(session.workoutNotes)}</p></div>` : ""}
+    <div class="workout-v2-detail-groups">${groups.map((group, index) => `<section class="workout-v2-detail-group"><div class="workout-v2-section-heading"><h4>${index + 1}. ${workoutV2Escape(group.name)}</h4><button type="button" data-action="open-exercise" data-exercise="${workoutV2Escape(group.name)}">Progress</button></div>
+      <div class="workout-v2-table-wrap"><table class="workout-v2-table workout-v2-detail-table"><thead><tr><th>Set</th><th>kg</th><th>Reps</th><th>e1RM</th><th>RPE</th><th>Distance</th><th>Time</th><th>Notes</th></tr></thead><tbody>${group.entries.map(({ entry }) => {
+        const estimate = WorkoutCore.estimatedOneRepMax(entry.weightKg, entry.reps);
+        return `<tr><td>${workoutV2Escape(entry.setOrder)}</td><td>${entry.weightKg ?? "—"}</td><td>${entry.reps ?? "—"}</td><td>${estimate == null ? "—" : workoutV2FormatNumber(estimate, 1)}</td><td>${entry.rpe ?? "—"}</td><td>${entry.distanceMeters == null ? "—" : `${entry.distanceMeters} m`}</td><td>${entry.seconds == null ? "—" : `${entry.seconds} s`}</td><td>${workoutV2Escape(entry.notes)}</td></tr>`;
+      }).join("")}</tbody></table></div></section>`).join("")}</div>
+  </section>`;
+}
+
+function workoutV2ImportedExerciseNames() {
+  const names = new Set();
+  workoutV2CompletedSessions().forEach((session) => session.entries.forEach((entry) => {
+    if (entry.exerciseName) names.add(entry.exerciseName);
+  }));
+  return Array.from(names).sort((a, b) => a.localeCompare(b));
+}
+
+function workoutV2FilteredSeries(series) {
+  if (workoutV2UiState.progressRange === "all") return series;
+  const cutoff = new Date(`${workoutV2Today()}T12:00:00`);
+  cutoff.setMonth(cutoff.getMonth() - Number(workoutV2UiState.progressRange));
+  return series.filter((point) => new Date(`${point.dateKey}T12:00:00`) >= cutoff);
+}
+
+function workoutV2LineChart(points, metric, label) {
+  const values = points.map((point) => point[metric]);
+  const valid = points.map((point, index) => ({ ...point, value: values[index] })).filter((point) => Number.isFinite(point.value));
+  if (!valid.length) return '<div class="workout-v2-chart-empty">No values for this metric in the selected range.</div>';
+  const width = 760, height = 260, left = 54, right = 16, top = 18, bottom = 38;
+  const minValue = Math.min(...valid.map((point) => point.value));
+  const maxValue = Math.max(...valid.map((point) => point.value));
+  const floor = minValue === maxValue ? Math.max(0, minValue * 0.9) : Math.max(0, minValue - (maxValue - minValue) * 0.08);
+  const ceiling = minValue === maxValue ? maxValue + Math.max(1, maxValue * 0.1) : maxValue + (maxValue - minValue) * 0.08;
+  const x = (index) => left + (valid.length === 1 ? (width - left - right) / 2 : index * (width - left - right) / (valid.length - 1));
+  const y = (value) => top + (ceiling - value) * (height - top - bottom) / Math.max(1, ceiling - floor);
+  const path = valid.map((point, index) => `${index ? "L" : "M"}${x(index).toFixed(1)},${y(point.value).toFixed(1)}`).join(" ");
+  return `<div class="workout-v2-chart"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${workoutV2Escape(label)}">
+    <line x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}" class="chart-axis"/><line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" class="chart-axis"/>
+    <line x1="${left}" y1="${y(maxValue)}" x2="${width - right}" y2="${y(maxValue)}" class="chart-grid"/><line x1="${left}" y1="${y(minValue)}" x2="${width - right}" y2="${y(minValue)}" class="chart-grid"/>
+    <text x="${left - 7}" y="${y(maxValue) + 4}" text-anchor="end">${workoutV2Escape(workoutV2FormatNumber(maxValue, 1))}</text><text x="${left - 7}" y="${y(minValue) + 4}" text-anchor="end">${workoutV2Escape(workoutV2FormatNumber(minValue, 1))}</text>
+    <path d="${path}" class="chart-line"/>${valid.map((point, index) => `<circle cx="${x(index)}" cy="${y(point.value)}" r="4"><title>${workoutV2Escape(point.dateKey)}: ${workoutV2Escape(workoutV2FormatNumber(point.value, 1))}</title></circle>`).join("")}
+    <text x="${left}" y="${height - 12}">${workoutV2Escape(valid[0].dateKey)}</text><text x="${width - right}" y="${height - 12}" text-anchor="end">${workoutV2Escape(valid[valid.length - 1].dateKey)}</text>
+  </svg></div>`;
+}
+
+function workoutV2RenderExercises() {
+  const names = workoutV2ImportedExerciseNames();
+  if (!names.includes(workoutV2UiState.progressExercise)) workoutV2UiState.progressExercise = names[0] || "";
+  const exercise = workoutV2UiState.progressExercise;
+  const series = workoutV2FilteredSeries(WorkoutCore.computeExerciseSeries(workoutV2Data(), exercise));
+  const latest = series[series.length - 1];
+  const best1rm = Math.max(...series.map((point) => point.estimated1rmKg).filter(Number.isFinite), -Infinity);
+  const bestWeight = Math.max(...series.map((point) => point.maxWeightKg).filter(Number.isFinite), -Infinity);
+  const totalSets = series.reduce((sum, point) => sum + point.workingSets, 0);
+  const totalVolume = series.reduce((sum, point) => sum + point.volumeKg, 0);
+  const metricLabels = { estimated1rmKg: "Estimated 1RM (kg)", maxWeightKg: "Top weight (kg)", workingSets: "Working sets", volumeKg: "Volume (kg)" };
+  return `<section class="workout-v2-panel"><h3>Exercise progression</h3>
+    <div class="workout-v2-form-row"><label class="workout-v2-grow">Exercise<select id="workoutV2ProgressExercise">${names.map((name) => `<option value="${workoutV2Escape(name)}"${name === exercise ? " selected" : ""}>${workoutV2Escape(name)}</option>`).join("")}</select></label>
+      <label>Graph<select id="workoutV2ProgressMetric">${Object.entries(metricLabels).map(([value, label]) => `<option value="${value}"${value === workoutV2UiState.progressMetric ? " selected" : ""}>${label}</option>`).join("")}</select></label>
+      <label>Range<select id="workoutV2ProgressRange"><option value="all">All history</option>${[3, 6, 12, 24].map((months) => `<option value="${months}"${String(months) === workoutV2UiState.progressRange ? " selected" : ""}>Last ${months} months</option>`).join("")}</select></label></div>
+    ${exercise ? `<div class="workout-v2-metric-grid workout-v2-metric-grid--exercise">
+      ${workoutV2MetricCard("Best e1RM", best1rm === -Infinity ? "—" : `${workoutV2FormatNumber(best1rm, 1)} kg`, "Epley estimate")}
+      ${workoutV2MetricCard("Top weight", bestWeight === -Infinity ? "—" : `${workoutV2FormatNumber(bestWeight, 1)} kg`, "heaviest recorded set")}
+      ${workoutV2MetricCard("Sets", workoutV2FormatNumber(totalSets, 0), `${series.length} sessions`)}
+      ${workoutV2MetricCard("Volume", `${workoutV2FormatNumber(totalVolume, 0)} kg`, "selected range")}
+      ${workoutV2MetricCard("Last trained", latest?.dateKey || "—", latest?.workoutName || "")}
+    </div>${workoutV2LineChart(series, workoutV2UiState.progressMetric, `${exercise}: ${metricLabels[workoutV2UiState.progressMetric]}`)}
+    <p class="workout-v2-help">Estimated 1RM uses the Epley formula. Note and Rest Timer rows are preserved but excluded from training metrics.</p>` : '<div class="workout-v2-empty">Import Strong data to see exercise analytics.</div>'}
+  </section>`;
+}
+
+function workoutV2RenderImport() {
+  const preview = workoutV2UiState.importPreview;
+  let previewHtml = "";
+  if (preview) {
+    const existing = new Set(workoutV2Data().sessions.map((session) => session.externalKey).filter(Boolean));
+    const updates = preview.workouts.filter((workout) => existing.has(workout.externalKey)).length;
+    const exerciseNames = new Set(preview.rows.map((row) => row["Exercise Name"]).filter(Boolean));
+    previewHtml = `<div class="workout-v2-import-preview"><strong>${preview.errors.length ? "Import needs attention" : "Ready to sync"}</strong><div class="workout-v2-metric-grid">
+      ${workoutV2MetricCard("Sessions", String(preview.workouts.length), `${preview.workouts.length - updates} new · ${updates} refreshed`)}
+      ${workoutV2MetricCard("CSV rows", String(preview.rows.length), "sets, notes and timers")}
+      ${workoutV2MetricCard("Exercises", String(exerciseNames.size), "distinct names")}
+    </div>${preview.errors.length ? `<ul>${preview.errors.map((error) => `<li>${workoutV2Escape(error)}</li>`).join("")}</ul>` : ""}</div>`;
+  }
+  return `<section class="workout-v2-panel"><h3>Sync from Strong</h3><div class="workout-v2-import-intro"><p>Export your workout history from Strong and choose the CSV here. Re-importing the full file is safe: known sessions are refreshed and new sessions are added.</p><p>Every exercise, set row, weight, rep, RPE, distance, timer and note is retained. Imported completed sessions feed the Physique calendar and points.</p></div>
+    <label class="workout-v2-file-drop">Strong CSV<input id="workoutV2CsvFile" type="file" accept=".csv,text/csv"></label>${previewHtml}
+    <div class="workout-v2-actions">${preview && !preview.errors.length ? '<button type="button" class="workout-v2-primary" data-action="confirm-import">Sync preview</button>' : ""}</div>
+    <section class="workout-v2-danger-zone"><div><h4>Delete Workout data</h4><p>Delete every imported session, set, and graph point from Startpage and Supabase. This also removes the matching Physique calendar history and recalculates Fitness skill XP/points. Your data inside Strong is not affected.</p></div><button type="button" class="workout-v2-danger" data-action="delete-all-workout-data">Delete all Workout data…</button></section>
+  </section>`;
+}
+
 function renderWorkoutV2() {
   const mount = document.getElementById("workoutTableDiv");
   if (!mount) return;
   workoutV2Data();
   let content = "";
-  if (workoutV2UiState.view === "Templates") content = workoutV2RenderTemplates();
-  else if (workoutV2UiState.view === "History") content = workoutV2RenderHistory();
-  else if (workoutV2UiState.view === "Progress") content = workoutV2RenderProgress();
-  else if (workoutV2UiState.view === "Import / Export") content = workoutV2RenderImportExport();
-  else content = workoutV2RenderLog();
+  if (workoutV2UiState.view === "History") content = workoutV2RenderHistory();
+  else if (workoutV2UiState.view === "Exercises") content = workoutV2RenderExercises();
+  else if (workoutV2UiState.view === "Import") content = workoutV2RenderImport();
+  else content = workoutV2RenderOverview();
   mount.innerHTML = `<div class="workout-v2">${workoutV2RenderTabs()}<div class="workout-v2-content">${content}</div><div id="workoutV2SyncStatus" class="workout-v2-sync" role="status">${workoutV2Escape(workoutV2UiState.syncMessage || (workoutV2UiState.remoteAvailable ? "Supabase ready." : "Local storage."))}</div></div>`;
   workoutV2BindEvents(mount);
 }
@@ -839,10 +1132,15 @@ function handleWorkoutGamifyDay(year, month, day) {
   const sessions = workoutV2Data().sessions
     .filter((session) => session.dateKey === dateKey)
     .sort((a, b) => String(b.startedAt).localeCompare(String(a.startedAt)));
-  const session = sessions.find((candidate) => candidate.status === "completed") || sessions.find((candidate) => candidate.status === "draft");
-  workoutV2UiState.view = "Log";
+  const session = sessions.find((candidate) => candidate.status === "completed");
+  workoutV2UiState.view = "History";
   workoutV2UiState.pendingDateKey = dateKey;
   workoutV2UiState.selectedSessionId = session?.id || "";
+  workoutV2UiState.historyFrom = session ? "" : dateKey;
+  workoutV2UiState.historyTo = session ? "" : dateKey;
+  workoutV2UiState.syncMessage = session
+    ? `Showing the Strong session for ${dateKey}.`
+    : `No imported Strong workout for ${dateKey}. Sync a current export after training.`;
   workoutV2OpenWindow();
   renderWorkoutV2();
   return session || null;
@@ -862,9 +1160,10 @@ async function workoutV2ReconcileDate(dateKey, previousValue) {
   if (value <= 0) delete boardState[parts.day];
   else if (value <= 6) boardState[parts.day] = WORKOUT_V2_CODES[value - 1];
   else boardState[parts.day] = typeof FITNESS_UNKNOWN_TRAINING !== "undefined" ? FITNESS_UNKNOWN_TRAINING : "__WORKOUT__";
+  const next = boardState[parts.day];
+  if (prev === next) return;
   if (typeof saveBoardState === "function") saveBoardState("fitness", parts.year, parts.month, boardState);
   if (typeof syncTrackerDayValue === "function") await syncTrackerDayValue("skill", "fitness", parts.year, parts.month, parts.day, value);
-  const next = boardState[parts.day];
   if (typeof syncMappedDailyFromGamifyChange === "function") await syncMappedDailyFromGamifyChange("fitness", prev, next, parts.year, parts.month, parts.day);
   if (typeof recalculateGamifySkillXp === "function") recalculateGamifySkillXp("fitness");
   if (typeof renderGamifyStreakCalendar === "function") renderGamifyStreakCalendar();
@@ -953,14 +1252,77 @@ async function workoutV2ConfirmImport() {
   workoutV2SetData(result.data);
   const importedKeys = new Set(preview.workouts.map((workout) => workout.externalKey));
   const importedSessions = workoutV2Data().sessions.filter((session) => importedKeys.has(session.externalKey));
+  let remoteError = null;
   if (workoutV2UiState.remoteAvailable) {
-    for (const session of importedSessions) await workoutV2SyncSession(session);
-    workoutV2SetData(workoutV2Data());
+    workoutV2SetStatus(`Syncing ${importedSessions.length} sessions to Supabase…`);
+    try {
+      await workoutV2SyncImportedSessions(importedSessions);
+      workoutV2SetData(workoutV2Data());
+    } catch (error) {
+      remoteError = error;
+      console.error("Strong workout sync failed:", error);
+    }
   }
   await workoutV2ReconcileAllDates();
-  workoutV2SetStatus(`Import complete: ${result.imported} imported, ${result.skipped} skipped existing.`);
+  workoutV2SetStatus(remoteError
+    ? `Imported locally, but Supabase sync failed. Re-import the same file to repair it (${String(remoteError.message || remoteError)}).`
+    : `Strong sync complete: ${result.imported} new, ${result.updated} refreshed, ${result.skipped} invalid.`);
   workoutV2UiState.importPreview = null;
   workoutV2UiState.importText = "";
+  workoutV2UiState.view = "Overview";
+  renderWorkoutV2();
+}
+
+async function workoutV2DeleteAllData() {
+  const requiredPhrase = "DELETE WORKOUT DATA";
+  const entered = typeof prompt === "function"
+    ? prompt(`This permanently deletes all Workout data from Startpage and Supabase.\n\nMatching Physique calendar history and Fitness skill XP/points will also be removed. Your Strong app data will not be changed.\n\nType ${requiredPhrase} to continue:`)
+    : null;
+  if (entered === null) return;
+  if (entered.trim() !== requiredPhrase) {
+    workoutV2SetStatus("Nothing was deleted: the confirmation phrase did not match.");
+    renderWorkoutV2();
+    return;
+  }
+
+  const dateKeys = Array.from(new Set(workoutV2Data().sessions.map((session) => session.dateKey).filter(Boolean)));
+  if (workoutV2HasBackend()) {
+    workoutV2SetStatus("Deleting Workout data from Supabase…");
+    try {
+      workoutV2DbResult(await backendState.client.from("workout_sessions")
+        .delete().eq("user_id", getBackendUserId()));
+    } catch (error) {
+      if (!workoutV2MissingTable(error)) {
+        console.error("Workout data deletion failed:", error);
+        workoutV2SetStatus(`Nothing was deleted: Supabase deletion failed (${String(error.message || error)}).`);
+        renderWorkoutV2();
+        return;
+      }
+    }
+  }
+
+  workoutV2SetData({ version: 2, routines: workoutV2Data().routines, sessions: [] });
+  workoutV2UiState.selectedSessionId = "";
+  workoutV2UiState.importPreview = null;
+  workoutV2UiState.importText = "";
+  workoutV2UiState.progressExercise = "";
+  workoutV2UiState.view = "Overview";
+  let calendarCleanupFailed = false;
+  for (const dateKey of dateKeys) {
+    try {
+      await workoutV2ReconcileDate(dateKey);
+    } catch (error) {
+      calendarCleanupFailed = true;
+      console.error("Workout calendar cleanup failed:", error);
+    }
+  }
+  if (typeof recalculateGamifySkillXp === "function") recalculateGamifySkillXp("fitness");
+  if (typeof renderGamifyStreakCalendar === "function") renderGamifyStreakCalendar();
+  if (typeof updateDailyCounter === "function") updateDailyCounter("fitness");
+  if (typeof renderDailies === "function") renderDailies();
+  workoutV2SetStatus(calendarCleanupFailed
+    ? "Workout history was deleted, but some calendar entries could not be synchronized."
+    : "All Workout data was deleted. Your Strong app data was not changed.");
   renderWorkoutV2();
 }
 
@@ -989,9 +1351,10 @@ function workoutV2ExportCsv() {
   workoutV2SetStatus(`Exported ${sessions.length} completed workout(s).`);
 }
 
-function workoutV2BindEvents(mount) {
+function workoutV2BindEventsLegacy(mount) {
   mount.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => {
     workoutV2UiState.view = button.dataset.view;
+    workoutV2UiState.selectedSessionId = "";
     renderWorkoutV2();
   }));
   mount.querySelectorAll("[data-session-field]").forEach((input) => input.addEventListener("input", () => {
@@ -1037,6 +1400,14 @@ function workoutV2BindEvents(mount) {
     workoutV2UiState.progressExercise = event.target.value;
     renderWorkoutV2();
   });
+  mount.querySelector("#workoutV2ProgressMetric")?.addEventListener("change", (event) => {
+    workoutV2UiState.progressMetric = event.target.value;
+    renderWorkoutV2();
+  });
+  mount.querySelector("#workoutV2ProgressRange")?.addEventListener("change", (event) => {
+    workoutV2UiState.progressRange = event.target.value;
+    renderWorkoutV2();
+  });
   mount.querySelector("#workoutV2CsvFile")?.addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1059,7 +1430,20 @@ function workoutV2BindEvents(mount) {
       return;
     }
     const session = workoutV2Session(workoutV2UiState.selectedSessionId);
-    if (action === "create-draft") {
+    if (action === "go-import") {
+      workoutV2UiState.view = "Import";
+      workoutV2UiState.selectedSessionId = "";
+      renderWorkoutV2();
+    } else if (action === "go-history") {
+      workoutV2UiState.view = "History";
+      workoutV2UiState.selectedSessionId = "";
+      renderWorkoutV2();
+    } else if (action === "open-exercise") {
+      workoutV2UiState.progressExercise = button.dataset.exercise || "";
+      workoutV2UiState.view = "Exercises";
+      workoutV2UiState.selectedSessionId = "";
+      renderWorkoutV2();
+    } else if (action === "create-draft") {
       const dateKey = document.getElementById("workoutV2NewDate")?.value || workoutV2Today();
       const code = document.getElementById("workoutV2NewRoutine")?.value || "A";
       workoutV2UiState.pendingRoutineCode = code;
@@ -1123,14 +1507,101 @@ function workoutV2BindEvents(mount) {
       workoutV2UiState.historyText = document.getElementById("workoutV2HistoryText")?.value || "";
       workoutV2UiState.historyFrom = document.getElementById("workoutV2HistoryFrom")?.value || "";
       workoutV2UiState.historyTo = document.getElementById("workoutV2HistoryTo")?.value || "";
+      workoutV2UiState.pageByView.History = 1;
+      renderWorkoutV2();
+    } else if (action === "clear-history-filters") {
+      workoutV2UiState.historyText = "";
+      workoutV2UiState.historyFrom = "";
+      workoutV2UiState.historyTo = "";
+      workoutV2UiState.pageByView.History = 1;
       renderWorkoutV2();
     } else if (action === "open-session") {
       workoutV2UiState.selectedSessionId = button.dataset.sessionId;
-      workoutV2UiState.view = "Log";
+      workoutV2UiState.view = "History";
       renderWorkoutV2();
     } else if (action === "preview-import") workoutV2ReadImportText();
     else if (action === "confirm-import") await workoutV2ConfirmImport();
     else if (action === "export-csv") workoutV2ExportCsv();
+  });
+}
+
+function workoutV2BindEvents(mount) {
+  mount.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => {
+    workoutV2UiState.view = button.dataset.view;
+    workoutV2UiState.selectedSessionId = "";
+    renderWorkoutV2();
+  }));
+  mount.querySelector("#workoutV2ProgressExercise")?.addEventListener("change", (event) => {
+    workoutV2UiState.progressExercise = event.target.value;
+    renderWorkoutV2();
+  });
+  mount.querySelector("#workoutV2ProgressMetric")?.addEventListener("change", (event) => {
+    workoutV2UiState.progressMetric = event.target.value;
+    renderWorkoutV2();
+  });
+  mount.querySelector("#workoutV2ProgressRange")?.addEventListener("change", (event) => {
+    workoutV2UiState.progressRange = event.target.value;
+    renderWorkoutV2();
+  });
+  mount.querySelector("#workoutV2CsvFile")?.addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    workoutV2SetStatus("Reading Strong export…");
+    workoutV2UiState.importText = await file.text();
+    workoutV2UiState.importPreview = WorkoutCore.parseStrongCsv(workoutV2UiState.importText);
+    renderWorkoutV2();
+  });
+  if (mount.dataset.workoutAnalyticsBound === "true") return;
+  mount.dataset.workoutAnalyticsBound = "true";
+  mount.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-action]");
+    if (!button) return;
+    const action = button.dataset.action;
+    if (action === "page") {
+      const view = button.dataset.pageView;
+      if (view && Object.hasOwn(workoutV2UiState.pageByView, view)) {
+        workoutV2UiState.pageByView[view] = Number(button.dataset.page) || 1;
+        renderWorkoutV2();
+      }
+    } else if (action === "go-import") {
+      workoutV2UiState.view = "Import";
+      workoutV2UiState.selectedSessionId = "";
+      renderWorkoutV2();
+    } else if (action === "go-history") {
+      workoutV2UiState.view = "History";
+      workoutV2UiState.selectedSessionId = "";
+      renderWorkoutV2();
+    } else if (action === "open-exercise") {
+      workoutV2UiState.progressExercise = button.dataset.exercise || "";
+      workoutV2UiState.view = "Exercises";
+      workoutV2UiState.selectedSessionId = "";
+      renderWorkoutV2();
+    } else if (action === "open-session") {
+      workoutV2UiState.selectedSessionId = button.dataset.sessionId || "";
+      workoutV2UiState.view = "History";
+      renderWorkoutV2();
+    } else if (action === "close-session") {
+      workoutV2UiState.selectedSessionId = "";
+      renderWorkoutV2();
+    } else if (action === "apply-history-filters") {
+      workoutV2UiState.historyText = document.getElementById("workoutV2HistoryText")?.value || "";
+      workoutV2UiState.historyFrom = document.getElementById("workoutV2HistoryFrom")?.value || "";
+      workoutV2UiState.historyTo = document.getElementById("workoutV2HistoryTo")?.value || "";
+      workoutV2UiState.pageByView.History = 1;
+      renderWorkoutV2();
+    } else if (action === "clear-history-filters") {
+      workoutV2UiState.historyText = "";
+      workoutV2UiState.historyFrom = "";
+      workoutV2UiState.historyTo = "";
+      workoutV2UiState.pageByView.History = 1;
+      renderWorkoutV2();
+    } else if (action === "confirm-import") {
+      button.disabled = true;
+      await workoutV2ConfirmImport();
+    } else if (action === "delete-all-workout-data") {
+      button.disabled = true;
+      await workoutV2DeleteAllData();
+    }
   });
 }
 

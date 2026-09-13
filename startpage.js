@@ -2103,6 +2103,7 @@ const FINANCE_BUDGET_STORAGE_KEY = "financeBudget_v1";
 const FINANCE_LEGACY_BUDGET_MONTHS_STORAGE_KEY = "financeBudgetMonths_v1";
 const FINANCE_OPENING_BALANCE_STORAGE_KEY = "financeOpeningBalance_v1";
 const FINANCE_RECURRING_STORAGE_KEY = "financeRecurring_v1";
+const FINANCE_LAST_CATEGORY_STORAGE_KEY = "financeLastCategory_v1";
 // The reserved row is the standard/default template; real month rows are snapshots.
 const FINANCE_DEFAULT_BUDGET_MONTH_KEY = "0001-01";
 const FINANCE_TYPES = new Set(["income", "expense"]);
@@ -3352,6 +3353,7 @@ function renderFinanceCategoryOptions() {
   const categoryInput = document.getElementById("financeCategoryInput");
   const recurringCategoryInput = document.getElementById("financeRecurringCategoryInput");
   const categories = getAllFinanceCategories();
+  const previousCategoryId = localStorage.getItem(FINANCE_LAST_CATEGORY_STORAGE_KEY) || categoryInput?.value || "";
   if (categoryInput) categoryInput.innerHTML = "";
   if (recurringCategoryInput) recurringCategoryInput.innerHTML = "";
   categories.forEach((category) => {
@@ -3361,6 +3363,15 @@ function renderFinanceCategoryOptions() {
     if (categoryInput) categoryInput.appendChild(option);
     if (recurringCategoryInput) recurringCategoryInput.appendChild(option.cloneNode(true));
   });
+  if (categoryInput) {
+    const preferredCategory = categories.some((category) => category.id === previousCategoryId)
+      ? previousCategoryId
+      : categories.find((category) => category.id !== FINANCE_UNASSIGNED_CATEGORY_ID)?.id
+        || categories[0]?.id
+        || "";
+    categoryInput.value = preferredCategory;
+  }
+  renderFinanceCategoryChips();
 }
 
 function populateFinanceCategorySelect(selectEl, selectedCategoryId = FINANCE_UNASSIGNED_CATEGORY_ID) {
@@ -3375,13 +3386,67 @@ function populateFinanceCategorySelect(selectEl, selectedCategoryId = FINANCE_UN
   selectEl.value = selectedCategoryId || FINANCE_UNASSIGNED_CATEGORY_ID;
 }
 
+function setFinanceEntryStatus(message, tone = "") {
+  const status = document.getElementById("financeEntryStatus");
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.tone = tone;
+}
+
+function selectFinanceEntryCategory(categoryId) {
+  const categoryInput = document.getElementById("financeCategoryInput");
+  if (!categoryInput) return;
+  const hasCategory = Array.from(categoryInput.options).some((option) => option.value === categoryId);
+  if (!hasCategory) return;
+  categoryInput.value = categoryId;
+  localStorage.setItem(FINANCE_LAST_CATEGORY_STORAGE_KEY, categoryId);
+  renderFinanceCategoryChips();
+}
+
+function renderFinanceCategoryChips() {
+  const container = document.getElementById("financeCategoryChips");
+  const categoryInput = document.getElementById("financeCategoryInput");
+  if (!container || !categoryInput) return;
+  container.innerHTML = "";
+  getAllFinanceCategories().forEach((category) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "finance-category-chip";
+    button.classList.toggle("finance-category-chip--active", category.id === categoryInput.value);
+    button.style.setProperty(
+      "--finance-category-color",
+      FINANCE_CATEGORY_COLORS[category.colorIndex % FINANCE_CATEGORY_COLORS.length],
+    );
+    button.textContent = category.id === FINANCE_UNASSIGNED_CATEGORY_ID ? "Other" : category.name;
+    button.setAttribute("aria-pressed", category.id === categoryInput.value ? "true" : "false");
+    button.addEventListener("click", function () {
+      selectFinanceEntryCategory(category.id);
+    });
+    container.appendChild(button);
+  });
+}
+
 function syncFinanceFormForType() {
   const typeInput = document.getElementById("financeTypeInput");
   const categoryInput = document.getElementById("financeCategoryInput");
+  const categoryPicker = document.getElementById("financeCategoryPicker");
+  const addButton = document.getElementById("financeAddBtn");
+  const noteInput = document.getElementById("financeNoteInput");
   if (!typeInput || !categoryInput) return;
   const isExpense = typeInput.value === "expense";
   categoryInput.disabled = !isExpense;
-  categoryInput.style.opacity = isExpense ? "1" : "0.6";
+  if (categoryPicker) categoryPicker.hidden = !isExpense;
+  if (addButton && !addButton.disabled) {
+    addButton.textContent = isExpense ? "Save expense" : "Save income";
+  }
+  if (noteInput) {
+    noteInput.placeholder = isExpense ? "e.g. groceries" : "e.g. salary";
+  }
+  document.querySelectorAll("[data-finance-type]").forEach((button) => {
+    const active = button.dataset.financeType === typeInput.value;
+    button.classList.toggle("finance-type-btn--active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
 }
 
 function syncFinanceRecurringFormForType() {
@@ -4115,13 +4180,39 @@ async function addFinanceEntry() {
   const date = dateInput.value;
   const type = typeInput.value;
   const amount = Number(amountInput.value);
-  const note = noteInput.value.trim();
   const categoryId = categoryInput.value;
+  const category = getAllFinanceCategories().find((item) => item.id === categoryId);
+  const categoryName = categoryId === FINANCE_UNASSIGNED_CATEGORY_ID ? "Expense" : category?.name;
+  const note = noteInput.value.trim() || (type === "expense" ? categoryName || "Expense" : "Income");
 
-  if (!date || !FINANCE_TYPES.has(type) || !Number.isFinite(amount) || amount < 0 || !note) {
+  if (!date || !FINANCE_TYPES.has(type) || !Number.isFinite(amount) || amount <= 0) {
+    setFinanceEntryStatus("Enter an amount greater than zero.", "error");
     return;
   }
-  if (type === "expense" && !categoryId) return;
+  if (type === "expense" && !categoryId) {
+    setFinanceEntryStatus("Choose a category for this expense.", "error");
+    return;
+  }
+
+  const addButton = document.getElementById("financeAddBtn");
+  if (addButton) {
+    addButton.disabled = true;
+    addButton.textContent = "Saving…";
+  }
+  setFinanceEntryStatus("Saving entry…");
+
+  const finishSave = () => {
+    const typeLabel = type === "expense" ? "Expense" : "Income";
+    if (type === "expense") {
+      localStorage.setItem(FINANCE_LAST_CATEGORY_STORAGE_KEY, categoryId);
+    }
+    noteInput.value = "";
+    amountInput.value = "";
+    renderFinanceList();
+    setFinanceEntryStatus(`${typeLabel} of ${formatFinanceAmount(amount)} saved.`, "success");
+    document.getElementById("financeEntryDetails")?.removeAttribute("open");
+    amountInput.focus();
+  };
 
   if (isFinanceBackendActive()) {
     try {
@@ -4141,12 +4232,14 @@ async function addFinanceEntry() {
       );
       const entry = mapFinanceEntryRow(row);
       if (entry) financeRemoteState.entries.push(entry);
-      noteInput.value = "";
-      amountInput.value = "";
-      renderFinanceList();
+      finishSave();
     } catch (error) {
       console.error("Finance entry create error:", error);
       setBackendAuthStatus("Backend: failed to save Finance entry");
+      setFinanceEntryStatus("Could not save. Please try again.", "error");
+    } finally {
+      if (addButton) addButton.disabled = false;
+      syncFinanceFormForType();
     }
     return;
   }
@@ -4162,9 +4255,9 @@ async function addFinanceEntry() {
     createdAt: new Date().toISOString(),
   });
   setFinanceEntries(entries);
-  noteInput.value = "";
-  amountInput.value = "";
-  renderFinanceList();
+  finishSave();
+  if (addButton) addButton.disabled = false;
+  syncFinanceFormForType();
 }
 
 async function saveFinanceMonthlyBudget() {
@@ -4381,7 +4474,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const dateInput = document.getElementById("financeDateInput");
   const addBtn = document.getElementById("financeAddBtn");
   const noteInput = document.getElementById("financeNoteInput");
+  const amountInput = document.getElementById("financeAmountInput");
   const typeInput = document.getElementById("financeTypeInput");
+  const categoryInput = document.getElementById("financeCategoryInput");
+  const typeButtons = Array.from(document.querySelectorAll("[data-finance-type]"));
   const budgetSaveBtn = document.getElementById("financeBudgetSaveBtn");
   const categoryAddBtn = document.getElementById("financeCategoryAddBtn");
   const monthInput = document.getElementById("financeMonthInput");
@@ -4408,6 +4504,29 @@ document.addEventListener("DOMContentLoaded", function () {
   if (noteInput) {
     noteInput.addEventListener("keydown", function (event) {
       if (event.key === "Enter") void addFinanceEntry();
+    });
+  }
+  if (amountInput) {
+    amountInput.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") void addFinanceEntry();
+    });
+  }
+  typeButtons.forEach((button) => {
+    button.addEventListener("click", function () {
+      if (!typeInput || !FINANCE_TYPES.has(button.dataset.financeType)) return;
+      typeInput.value = button.dataset.financeType;
+      syncFinanceFormForType();
+      setFinanceEntryStatus(
+        typeInput.value === "expense"
+          ? "Expense selected. Add an amount and choose a category."
+          : "Income selected. Add the amount you received.",
+      );
+      amountInput?.focus();
+    });
+  });
+  if (categoryInput) {
+    categoryInput.addEventListener("change", function () {
+      selectFinanceEntryCategory(categoryInput.value);
     });
   }
   if (typeInput) {
@@ -6236,7 +6355,7 @@ async function completeDaily(taskId, buttonEl) {
     if (!historyDone && daily.skillCode === "fitness" && typeof handleWorkoutGamifyDay === "function") {
       const today = new Date();
       await handleWorkoutGamifyDay(today.getFullYear(), today.getMonth(), today.getDate());
-      setHabiticaSyncStatus(`Finish today's workout before scoring "${daily.text}".`);
+      setHabiticaSyncStatus(`Import today's Strong workout before scoring "${daily.text}".`);
       if (buttonEl) buttonEl.disabled = false;
       return;
     }

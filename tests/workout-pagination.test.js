@@ -5,22 +5,20 @@ const path = require("node:path");
 
 const appPath = path.join(__dirname, "..", "workout-v2.js");
 
-test("Workout V2 paginates dense views and binds delegation only once", () => {
+test("Workout analytics paginates history and fully paginates cloud entry reads", () => {
   const app = fs.readFileSync(appPath, "utf8");
   assert.match(app, /const WORKOUT_V2_PAGE_SIZE =/);
   assert.match(app, /function workoutV2Paginate\(/);
   assert.match(app, /data-action="page"/);
-  assert.match(app, /workoutV2BindEventsBound/);
-  assert.match(app, /workoutV2RenderPagination\("Log"/);
-  assert.match(app, /workoutV2RenderPagination\("Templates"/);
+  assert.match(app, /workoutAnalyticsBound/);
   assert.match(app, /workoutV2RenderPagination\("History"/);
-  assert.match(app, /workoutV2RenderPagination\("Progress"/);
   assert.match(app, /await workoutV2ReconcileAllDates\(\)/);
   assert.match(app, /function workoutV2ExerciseGroups\(/);
-  assert.match(app, /Add exercise/);
-  assert.match(app, /Add set/);
-  assert.match(app, /Set type/);
-  assert.doesNotMatch(app, /<th>Set order<\/th>/);
+  assert.match(app, /function workoutV2FetchSessionEntries\(/);
+  assert.match(app, /workoutV2Chunks\(sessionIds, 40\)/);
+  assert.match(app, /\.range\(from, from \+ pageSize - 1\)/);
+  assert.match(app, /function workoutV2SyncImportedSessions\(/);
+  assert.match(app, /workoutV2Chunks\(entryRows, 500\)/);
 });
 
 test("Workout V2 uses neutral Win98 button/panel colors", () => {

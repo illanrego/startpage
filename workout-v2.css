@@ -361,6 +361,264 @@
   max-width: 240px;
 }
 
+#workoutTableDiv .workout-v2-subtitle {
+  margin: 2px 0 0;
+  color: #444;
+  font-size: 11px;
+}
+
+#workoutTableDiv .workout-v2-panel h4 {
+  margin: 0;
+  font-size: 12px;
+}
+
+#workoutTableDiv .workout-v2-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(112px, 1fr));
+  gap: 7px;
+}
+
+#workoutTableDiv .workout-v2-metric {
+  min-width: 0;
+  padding: 8px;
+  border-top: 2px solid #7a7a7a;
+  border-left: 2px solid #7a7a7a;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+#workoutTableDiv .workout-v2-metric > span {
+  color: #444;
+  font-size: 11px;
+}
+
+#workoutTableDiv .workout-v2-metric > strong {
+  overflow: hidden;
+  font-size: 17px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+}
+
+#workoutTableDiv .workout-v2-metric > small {
+  color: #555;
+  font-size: 10px;
+}
+
+#workoutTableDiv .workout-v2-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(210px, 1fr);
+  gap: 8px;
+}
+
+#workoutTableDiv .workout-v2-inset,
+#workoutTableDiv .workout-v2-detail-group,
+#workoutTableDiv .workout-v2-session-notes,
+#workoutTableDiv .workout-v2-import-intro {
+  padding: 8px;
+  border-top: 2px solid #7a7a7a;
+  border-left: 2px solid #7a7a7a;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  background: #d8d8d8;
+}
+
+#workoutTableDiv .workout-v2-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+#workoutTableDiv .workout-v2-bar-chart {
+  height: 160px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 8px 5px 0;
+  border: 2px inset #fff;
+  background: #fff;
+}
+
+#workoutTableDiv .workout-v2-bar-column {
+  height: 100%;
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  text-align: center;
+}
+
+#workoutTableDiv .workout-v2-bar-column > span {
+  min-height: 13px;
+  font-size: 10px;
+}
+
+#workoutTableDiv .workout-v2-bar-column > i {
+  min-height: 2px;
+  border: 1px solid #111;
+  background: #000080;
+}
+
+#workoutTableDiv .workout-v2-bar-column > small {
+  padding-top: 3px;
+  overflow: hidden;
+  color: #555;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+#workoutTableDiv .workout-v2-ranking {
+  max-height: 168px;
+  margin: 6px 0 0;
+  padding-left: 24px;
+  overflow: auto;
+}
+
+#workoutTableDiv .workout-v2-ranking li {
+  margin-bottom: 3px;
+}
+
+#workoutTableDiv .workout-v2-ranking button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  text-align: left;
+}
+
+#workoutTableDiv .workout-v2-history-table {
+  min-width: 650px;
+}
+
+#workoutTableDiv .workout-v2-history-table th:nth-child(2),
+#workoutTableDiv .workout-v2-history-table td:nth-child(2) {
+  text-align: left;
+}
+
+#workoutTableDiv .workout-v2-detail-groups {
+  display: grid;
+  gap: 8px;
+}
+
+#workoutTableDiv .workout-v2-detail-table {
+  min-width: 720px;
+}
+
+#workoutTableDiv .workout-v2-session-notes p,
+#workoutTableDiv .workout-v2-import-intro p {
+  margin: 4px 0;
+  white-space: pre-wrap;
+}
+
+#workoutTableDiv .workout-v2-chart {
+  border: 2px inset #fff;
+  background: #fff;
+  overflow: hidden;
+}
+
+#workoutTableDiv .workout-v2-chart svg {
+  width: 100%;
+  height: auto;
+  min-height: 220px;
+  display: block;
+}
+
+#workoutTableDiv .workout-v2-chart text {
+  font-family: "win98", sans-serif;
+  font-size: 10px;
+  fill: #333;
+}
+
+#workoutTableDiv .workout-v2-chart .chart-axis {
+  stroke: #111;
+  stroke-width: 1.5;
+}
+
+#workoutTableDiv .workout-v2-chart .chart-grid {
+  stroke: #bbb;
+  stroke-dasharray: 3 3;
+}
+
+#workoutTableDiv .workout-v2-chart .chart-line {
+  fill: none;
+  stroke: #000080;
+  stroke-width: 2.5;
+}
+
+#workoutTableDiv .workout-v2-chart circle {
+  fill: #fff;
+  stroke: #000080;
+  stroke-width: 2;
+}
+
+#workoutTableDiv .workout-v2-chart-empty {
+  min-height: 180px;
+  border: 2px inset #fff;
+  background: #fff;
+  display: grid;
+  place-items: center;
+}
+
+#workoutTableDiv .workout-v2-file-drop {
+  min-height: 90px;
+  padding: 12px;
+  border: 2px dashed #555;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: bold;
+}
+
+#workoutTableDiv .workout-v2-file-drop input {
+  width: min(100%, 340px);
+}
+
+#workoutTableDiv .workout-v2-welcome {
+  min-height: 220px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+#workoutTableDiv .workout-v2-danger-zone {
+  margin-top: 10px;
+  padding: 10px;
+  border: 2px solid #800000;
+  background: #f4e7e7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+#workoutTableDiv .workout-v2-danger-zone h4 {
+  color: #800000;
+}
+
+#workoutTableDiv .workout-v2-danger-zone p {
+  max-width: 660px;
+  margin: 4px 0 0;
+  line-height: 1.35;
+}
+
+#workoutTableDiv .workout-v2-danger-zone .workout-v2-danger {
+  flex: none;
+  border-right-color: #500000;
+  border-bottom-color: #500000;
+  color: #700000;
+  font-weight: bold;
+}
+
 /* Desktop sizing for the workout container stays as-is; mobile goes full width. */
 @media (max-width: 760px) {
   #workoutTableDiv .workout-v2-table {
@@ -374,6 +632,19 @@
   }
   #workoutTableDiv .workout-v2-file-label input[type="file"] {
     max-width: none;
+  }
+  #workoutTableDiv .workout-v2-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #workoutTableDiv .workout-v2-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  #workoutTableDiv .workout-v2-panel-heading {
+    align-items: flex-start;
+  }
+  #workoutTableDiv .workout-v2-danger-zone {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 
