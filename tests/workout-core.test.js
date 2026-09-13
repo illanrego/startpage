@@ -11,7 +11,9 @@ const {
   getFitnessTrackerValueForDate,
   importStrongWorkouts,
   inferRoutineCode,
+  niceAxisTicks,
   parseStrongCsv,
+  pickTickIndexes,
 } = require("../workout-core.js");
 
 test("parses Strong rows with embedded newlines and unescaped quotes", () => {
@@ -203,4 +205,33 @@ test("exercise progress excludes notes and rest timers", () => {
   assert.equal(progress.bestWeightKg, 45);
   assert.equal(progress.totalVolumeKg, 545);
   assert.deepEqual(progress.bestRepsByWeight, { "40": 8, "45": 5 });
+});
+
+test("axis ticks land on readable values covering the data range", () => {
+  const weights = niceAxisTicks(63.5, 92.5, 5);
+  assert.equal(weights.step, 10);
+  assert.equal(weights.min, 60);
+  assert.equal(weights.max, 100);
+  assert.deepEqual(weights.ticks, [60, 70, 80, 90, 100]);
+  assert.ok(weights.min <= 63.5 && weights.max >= 92.5);
+
+  const sets = niceAxisTicks(3, 12, 4);
+  assert.ok(sets.step > 0);
+  assert.ok(sets.min <= 3 && sets.max >= 12);
+  assert.ok(sets.ticks.length >= 3);
+
+  // A flat series still gets a real axis instead of a zero-height band.
+  const flat = niceAxisTicks(80, 80, 5);
+  assert.ok(flat.max > flat.min);
+  assert.ok(flat.ticks.length >= 2);
+});
+
+test("date ticks stay readable and always keep the newest point", () => {
+  assert.deepEqual(pickTickIndexes(4, 8), [0, 1, 2, 3]);
+  assert.deepEqual(pickTickIndexes(0, 8), []);
+  const many = pickTickIndexes(37, 8);
+  assert.ok(many.length <= 9, `expected a thinned axis, got ${many.length} labels`);
+  assert.equal(many[0], 0);
+  assert.equal(many[many.length - 1], 36);
+  assert.ok(many.every((index, position) => position === 0 || index > many[position - 1]));
 });

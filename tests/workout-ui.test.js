@@ -45,6 +45,27 @@ test("Gamify delegates Physique dates to Workout V2", () => {
   assert.match(app, /loadWorkoutV2BackendState/);
 });
 
+test("Workout graphs label both axes and expose per-point tooltips", () => {
+  const app = fs.readFileSync(path.join(root, "workout-v2.js"), "utf8");
+  const css = fs.readFileSync(path.join(root, "workout-v2.css"), "utf8");
+
+  // Axis scaffold: nice ticks on the value axis, thinned dates on the time axis, both named.
+  assert.match(app, /WorkoutCore\.niceAxisTicks\(/);
+  assert.match(app, /WorkoutCore\.pickTickIndexes\(/);
+  assert.match(app, /class="chart-axis-title"/);
+  assert.match(app, /chart-tick-label/);
+  assert.match(app, /WORKOUT_V2_METRICS/);
+  assert.match(app, /Estimated 1RM \(kg\)/);
+  // Hover: one hit band per session carrying the numbers, plus the shared tooltip host.
+  assert.match(app, /class="chart-hit"/);
+  assert.match(app, /data-tip-rows="\$\{workoutV2Escape\(JSON\.stringify\(rows\)\)\}"/);
+  assert.match(app, /function workoutV2HandleChartPointer/);
+  assert.match(app, /mount\.addEventListener\("pointermove", workoutV2HandleChartPointer\)/);
+  assert.match(app, /id = "workoutV2ChartTooltip"/);
+  assert.match(css, /\.workout-v2-chart-tooltip \{/);
+  assert.match(css, /\.workout-v2-chart \.chart-cursor\[hidden\]/);
+});
+
 test("Workout cloud history loads through the feature sync lifecycle", () => {
   const shell = fs.readFileSync(path.join(root, "startpage.js"), "utf8");
   const workout = fs.readFileSync(path.join(root, "workout-v2.js"), "utf8");

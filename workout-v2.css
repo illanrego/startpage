@@ -435,19 +435,55 @@
 }
 
 #workoutTableDiv .workout-v2-bar-chart {
-  height: 160px;
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  padding: 8px 5px 0;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  grid-template-rows: 178px auto;
+  gap: 4px 6px;
+  padding: 8px 6px 2px;
   border: 2px inset #fff;
   background: #fff;
 }
 
+#workoutTableDiv .workout-v2-bar-scale {
+  position: relative;
+  font-size: 9px;
+  color: #333;
+}
+
+#workoutTableDiv .workout-v2-bar-scale > span {
+  position: absolute;
+  right: 0;
+  line-height: 1;
+  transform: translateY(50%);
+}
+
+#workoutTableDiv .workout-v2-bar-plot {
+  position: relative;
+  overflow: hidden;
+}
+
+#workoutTableDiv .workout-v2-bar-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed #c4c4c4;
+}
+
+#workoutTableDiv .workout-v2-bar-gridline.is-base {
+  border-top: 1.5px solid #111;
+}
+
+#workoutTableDiv .workout-v2-bar-columns {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+
 #workoutTableDiv .workout-v2-bar-column {
-  height: 100%;
-  min-width: 0;
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -456,22 +492,35 @@
 }
 
 #workoutTableDiv .workout-v2-bar-column > span {
-  min-height: 13px;
+  height: 14px;
   font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
 }
 
 #workoutTableDiv .workout-v2-bar-column > i {
-  min-height: 2px;
+  flex: none;
+  min-height: 0;
   border: 1px solid #111;
+  box-sizing: border-box;
   background: #000080;
 }
 
 #workoutTableDiv .workout-v2-bar-column > small {
-  padding-top: 3px;
+  height: 14px;
   overflow: hidden;
-  color: #555;
-  font-size: 8px;
+  color: #333;
+  font-size: 9px;
+  line-height: 14px;
   white-space: nowrap;
+}
+
+#workoutTableDiv .workout-v2-chart-caption {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #555;
+  font-size: 9px;
+  text-align: center;
 }
 
 #workoutTableDiv .workout-v2-ranking {
@@ -526,7 +575,7 @@
 #workoutTableDiv .workout-v2-chart svg {
   width: 100%;
   height: auto;
-  min-height: 220px;
+  min-height: 240px;
   display: block;
 }
 
@@ -536,13 +585,27 @@
   fill: #333;
 }
 
+#workoutTableDiv .workout-v2-chart .chart-axis-title {
+  fill: #111;
+  font-size: 9px;
+}
+
+#workoutTableDiv .workout-v2-chart .chart-tick-label {
+  fill: #444;
+}
+
 #workoutTableDiv .workout-v2-chart .chart-axis {
   stroke: #111;
   stroke-width: 1.5;
 }
 
+#workoutTableDiv .workout-v2-chart .chart-axis-tick {
+  stroke: #111;
+  stroke-width: 1.5;
+}
+
 #workoutTableDiv .workout-v2-chart .chart-grid {
-  stroke: #bbb;
+  stroke: #c4c4c4;
   stroke-dasharray: 3 3;
 }
 
@@ -552,8 +615,42 @@
   stroke-width: 2.5;
 }
 
-#workoutTableDiv .workout-v2-chart circle {
+#workoutTableDiv .workout-v2-chart .chart-point {
   fill: #fff;
+  stroke: #000080;
+  stroke-width: 2;
+}
+
+/* Invisible full-height band per session: hovering anywhere in the column works. */
+#workoutTableDiv .chart-hit {
+  cursor: crosshair;
+}
+
+#workoutTableDiv .workout-v2-chart .chart-hit {
+  fill: transparent;
+}
+
+#workoutTableDiv .chart-hit[data-action] {
+  cursor: pointer;
+}
+
+#workoutTableDiv .workout-v2-chart .chart-cursor {
+  pointer-events: none;
+}
+
+#workoutTableDiv .workout-v2-chart .chart-cursor[hidden] {
+  display: none;
+}
+
+#workoutTableDiv .workout-v2-chart .chart-cursor-line {
+  stroke: #000080;
+  stroke-dasharray: 3 2;
+  stroke-width: 1;
+  opacity: 0.65;
+}
+
+#workoutTableDiv .workout-v2-chart .chart-cursor-dot {
+  fill: #ffff00;
   stroke: #000080;
   stroke-width: 2;
 }
@@ -657,4 +754,76 @@
 
 .gamify-streak-dot--draft .gamify-streak-dot-label {
   color: inherit;
+}
+
+/* Chart hover card: lives on <body> (position: fixed) so re-renders can't wipe it. */
+.workout-v2-chart-tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 4000;
+  min-width: 176px;
+  max-width: 280px;
+  padding: 6px 8px;
+  border: 2px solid #000;
+  border-top-color: #fff;
+  border-left-color: #fff;
+  background: #ffffe1;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.28);
+  color: #111;
+  font-family: "win98", "MS Sans Serif", Tahoma, sans-serif;
+  font-size: 11px;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+.workout-v2-chart-tooltip[hidden] {
+  display: none;
+}
+
+.workout-v2-chart-tooltip strong {
+  display: block;
+  font-size: 12px;
+}
+
+.workout-v2-chart-tooltip em {
+  display: block;
+  margin-bottom: 4px;
+  color: #333;
+  font-style: normal;
+}
+
+.workout-v2-chart-tooltip dl {
+  margin: 0;
+}
+
+.workout-v2-chart-tooltip dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.workout-v2-chart-tooltip dt {
+  color: #333;
+}
+
+.workout-v2-chart-tooltip dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.workout-v2-chart-tooltip dl > div.is-primary dt,
+.workout-v2-chart-tooltip dl > div.is-primary dd {
+  color: #000080;
+  font-weight: 700;
+}
+
+.workout-v2-chart-tooltip small {
+  display: block;
+  margin-top: 5px;
+  padding-top: 4px;
+  border-top: 1px solid #b5b5b5;
+  color: #555;
+  font-size: 9px;
 }

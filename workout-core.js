@@ -432,10 +432,53 @@
     return { headers: [...STRONG_HEADERS], rows, workouts: groupStrongRows(rows), errors };
   }
 
+  // Axis helpers shared by the workout charts: they keep every tick on a readable
+  // number (10/20/50/…) instead of echoing the raw data minimum and maximum.
+  function niceAxisTicks(min, max, count) {
+    const target = Math.max(2, Math.round(Number(count) || 5));
+    let low = Number(min);
+    let high = Number(max);
+    if (!Number.isFinite(low) || !Number.isFinite(high)) return { min: 0, max: 0, step: 0, ticks: [] };
+    if (low > high) [low, high] = [high, low];
+    if (low === high) {
+      const span = Math.max(1, Math.abs(low) * 0.1);
+      low -= span;
+      high += span;
+    }
+    const rawStep = (high - low) / (target - 1);
+    const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const normalized = rawStep / magnitude;
+    const multiple = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 2.5 ? 2.5 : normalized <= 5 ? 5 : 10;
+    const step = multiple * magnitude;
+    const niceLow = Math.floor(low / step) * step;
+    const niceHigh = Math.ceil(high / step) * step;
+    const ticks = [];
+    for (let value = niceLow; value <= niceHigh + step / 1000; value += step) {
+      ticks.push(Number(value.toFixed(6)));
+    }
+    return { min: Number(niceLow.toFixed(6)), max: Number(niceHigh.toFixed(6)), step, ticks };
+  }
+
+  function pickTickIndexes(count, maxTicks) {
+    const total = Math.max(0, Math.round(Number(count) || 0));
+    if (!total) return [];
+    const limit = Math.max(2, Math.round(Number(maxTicks) || 8));
+    if (total <= limit) return Array.from({ length: total }, (_, index) => index);
+    // One uniform stride, and the newest point only joins in when it continues that
+    // stride exactly — otherwise the last two labels crowd together at the edge.
+    const stride = Math.ceil((total - 1) / (limit - 1));
+    const indexes = [];
+    for (let index = 0; index < total; index += stride) indexes.push(index);
+    if (total - 1 - indexes[indexes.length - 1] === stride) indexes.push(total - 1);
+    return indexes;
+  }
+
   return {
     STRONG_HEADERS,
     computeExerciseProgress,
     computeExerciseSeries,
+    niceAxisTicks,
+    pickTickIndexes,
     computeWorkoutSummary,
     createWorkoutDraft,
     exportStrongCsv,
