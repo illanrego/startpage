@@ -87,6 +87,32 @@ test("Workout window is stretchable like the other feature windows", () => {
   assert.match(app, /viewBox="0 0 \$\{width\} \$\{height\}" style="height:\$\{height\}px"/);
 });
 
+test("Exercise graph takes an exact date range, not just the presets", () => {
+  const app = fs.readFileSync(path.join(root, "workout-v2.js"), "utf8");
+
+  assert.match(app, /progressFrom: "",\s*progressTo: "",/);
+  assert.match(app, /id="workoutV2ProgressFrom" type="date"/);
+  assert.match(app, /id="workoutV2ProgressTo" type="date"/);
+  assert.match(app, /data-action="clear-progress-range"/);
+  assert.match(app, /workoutV2UiState\.progressFrom = event\.target\.value \|\| ""/);
+  assert.match(app, /workoutV2UiState\.progressTo = event\.target\.value \|\| ""/);
+  // Both ends are applied to the same series the cards and the graph read.
+  assert.match(app, /if \(from && dateKey < from\) return false;/);
+  assert.match(app, /if \(to && dateKey > to\) return false;/);
+  // The pickers can only offer dates the imported history actually covers.
+  assert.match(app, /const allSeries = WorkoutCore\.computeExerciseSeries\(workoutV2Data\(\), exercise\);/);
+  assert.match(app, /min="\$\{workoutV2Escape\(firstDate\)\}" max="\$\{workoutV2Escape\(lastDate\)\}"/);
+});
+
+test("Exercise graph axis spans the sessions it is showing", () => {
+  const app = fs.readFileSync(path.join(root, "workout-v2.js"), "utf8");
+
+  assert.match(app, /function workoutV2ValueAxis\(values\)/);
+  assert.match(app, /const min = Math\.min\(\.\.\.finite\);\s*const max = Math\.max\(\.\.\.finite\);/);
+  assert.match(app, /return workoutV2EvenTicks\(min, max\);/);
+  assert.match(app, /const axis = workoutV2ValueAxis\(valid\.map\(\(point\) => point\.value\)\);/);
+});
+
 test("Workout cloud history loads through the feature sync lifecycle", () => {
   const shell = fs.readFileSync(path.join(root, "startpage.js"), "utf8");
   const workout = fs.readFileSync(path.join(root, "workout-v2.js"), "utf8");

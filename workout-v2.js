@@ -30,6 +30,8 @@ const workoutV2UiState = {
   progressExercise: "",
   progressMetric: "estimated1rmKg",
   progressRange: "all",
+  progressFrom: "",
+  progressTo: "",
   importPreview: null,
   importText: "",
   syncMessage: "",
@@ -1098,11 +1100,25 @@ function workoutV2ImportedExerciseNames() {
   return Array.from(names).sort((a, b) => a.localeCompare(b));
 }
 
+// Preset range and exact dates combine: the preset sets the window, From/To sharpen it.
 function workoutV2FilteredSeries(series) {
-  if (workoutV2UiState.progressRange === "all") return series;
-  const cutoff = new Date(`${workoutV2Today()}T12:00:00`);
-  cutoff.setMonth(cutoff.getMonth() - Number(workoutV2UiState.progressRange));
-  return series.filter((point) => new Date(`${point.dateKey}T12:00:00`) >= cutoff);
+  const presetCutoff = workoutV2UiState.progressRange === "all"
+    ? null
+    : (() => {
+      const cutoff = new Date(`${workoutV2Today()}T12:00:00`);
+      cutoff.setMonth(cutoff.getMonth() - Number(workoutV2UiState.progressRange));
+      return cutoff.getTime();
+    })();
+  const from = workoutV2UiState.progressFrom;
+  const to = workoutV2UiState.progressTo;
+  return series.filter((point) => {
+    const dateKey = String(point.dateKey || "").slice(0, 10);
+    if (!dateKey) return false;
+    if (from && dateKey < from) return false;
+    if (to && dateKey > to) return false;
+    if (presetCutoff != null && new Date(`${dateKey}T12:00:00`).getTime() < presetCutoff) return false;
+    return true;
+  });
 }
 
 // The SVG is drawn at the panel's real pixel width, so stretching the window gives
@@ -1138,6 +1154,31 @@ function scheduleWorkoutV2ChartRender() {
   });
 }
 
+// Value axis from the lowest session you actually have to the highest, so no
+// vertical space is spent on numbers you never lifted (the old nice-rounding
+// snapped the floor to 0 whenever the range was wide, e.g. sets 2-12 or volume).
+function workoutV2EvenTicks(min, max, count) {
+  const total = Math.max(2, Math.round(Number(count) || 5));
+  const step = (max - min) / (total - 1);
+  const ticks = [];
+  for (let index = 0; index < total; index += 1) {
+    ticks.push(index === total - 1 ? max : min + step * index);
+  }
+  return { min, max, step, ticks };
+}
+
+function workoutV2ValueAxis(values) {
+  const finite = values.filter((value) => Number.isFinite(value));
+  if (!finite.length) return { min: 0, max: 0, step: 0, ticks: [] };
+  const min = Math.min(...finite);
+  const max = Math.max(...finite);
+  if (min === max) {
+    const span = Math.max(1, Math.abs(min) * 0.1);
+    return workoutV2EvenTicks(min - span, max + span);
+  }
+  return workoutV2EvenTicks(min, max);
+}
+
 function workoutV2LineChart(points, metric, label) {
   const valid = points
     .map((point) => ({ ...point, value: point[metric] }))
@@ -1150,11 +1191,7 @@ function workoutV2LineChart(points, metric, label) {
   const meta = WORKOUT_V2_METRICS[metric] || { label: metric, unit: "" };
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
-  const axis = WorkoutCore.niceAxisTicks(
-    Math.min(...valid.map((point) => point.value)),
-    Math.max(...valid.map((point) => point.value)),
-    5,
-  );
+  const axis = workoutV2ValueAxis(valid.map((point) => point.value));
   const band = Math.max(1e-6, axis.max - axis.min);
   // Horizontal position is elapsed time, not session order.
   const times = valid.map((point) => new Date(`${String(point.dateKey || "").slice(0, 10)}T12:00:00`).getTime());
@@ -1316,7 +1353,10 @@ function workoutV2RenderExercises() {
   const names = workoutV2ImportedExerciseNames();
   if (!names.includes(workoutV2UiState.progressExercise)) workoutV2UiState.progressExercise = names[0] || "";
   const exercise = workoutV2UiState.progressExercise;
-  const series = workoutV2FilteredSeries(WorkoutCore.computeExerciseSeries(workoutV2Data(), exercise));
+  const allSeries = WorkoutCore.computeExerciseSeries(workoutV2Data(), exercise);
+  const series = workoutV2FilteredSeries(allSeries);
+  const firstDate = allSeries[0]?.dateKey || "";
+  const lastDate = allSeries[allSeries.length - 1]?.dateKey || "";
   const latest = series[series.length - 1];
   const best1rm = Math.max(...series.map((point) => point.estimated1rmKg).filter(Number.isFinite), -Infinity);
   const bestWeight = Math.max(...series.map((point) => point.maxWeightKg).filter(Number.isFinite), -Infinity);
@@ -1326,7 +1366,10 @@ function workoutV2RenderExercises() {
   return `<section class="workout-v2-panel"><h3>Exercise progression</h3>
     <div class="workout-v2-form-row"><label class="workout-v2-grow">Exercise<select id="workoutV2ProgressExercise">${names.map((name) => `<option value="${workoutV2Escape(name)}"${name === exercise ? " selected" : ""}>${workoutV2Escape(name)}</option>`).join("")}</select></label>
       <label>Graph<select id="workoutV2ProgressMetric">${metricEntries.map(([value, meta]) => `<option value="${value}"${value === workoutV2UiState.progressMetric ? " selected" : ""}>${workoutV2Escape(meta.label)}</option>`).join("")}</select></label>
-      <label>Range<select id="workoutV2ProgressRange"><option value="all">All history</option>${[3, 6, 12, 24].map((months) => `<option value="${months}"${String(months) === workoutV2UiState.progressRange ? " selected" : ""}>Last ${months} months</option>`).join("")}</select></label></div>
+      <label>Range<select id="workoutV2ProgressRange"><option value="all">All history</option>${[3, 6, 12, 24].map((months) => `<option value="${months}"${String(months) === workoutV2UiState.progressRange ? " selected" : ""}>Last ${months} months</option>`).join("")}</select></label>
+      <label>From<input id="workoutV2ProgressFrom" type="date" value="${workoutV2Escape(workoutV2UiState.progressFrom)}" min="${workoutV2Escape(firstDate)}" max="${workoutV2Escape(lastDate)}" title="Exact start date — leave empty to ignore"></label>
+      <label>To<input id="workoutV2ProgressTo" type="date" value="${workoutV2Escape(workoutV2UiState.progressTo)}" min="${workoutV2Escape(firstDate)}" max="${workoutV2Escape(lastDate)}" title="Exact end date — leave empty to ignore"></label>
+      ${workoutV2UiState.progressFrom || workoutV2UiState.progressTo ? '<button type="button" data-action="clear-progress-range">Clear dates</button>' : ""}</div>
     ${exercise ? `<div class="workout-v2-metric-grid workout-v2-metric-grid--exercise">
       ${workoutV2MetricCard("Best e1RM", best1rm === -Infinity ? "—" : `${workoutV2FormatNumber(best1rm, 1)} kg`, "Epley estimate")}
       ${workoutV2MetricCard("Top weight", bestWeight === -Infinity ? "—" : `${workoutV2FormatNumber(bestWeight, 1)} kg`, "heaviest recorded set")}
@@ -1795,6 +1838,14 @@ function workoutV2BindEvents(mount) {
     workoutV2UiState.progressRange = event.target.value;
     renderWorkoutV2();
   });
+  mount.querySelector("#workoutV2ProgressFrom")?.addEventListener("change", (event) => {
+    workoutV2UiState.progressFrom = event.target.value || "";
+    renderWorkoutV2();
+  });
+  mount.querySelector("#workoutV2ProgressTo")?.addEventListener("change", (event) => {
+    workoutV2UiState.progressTo = event.target.value || "";
+    renderWorkoutV2();
+  });
   mount.querySelector("#workoutV2CsvFile")?.addEventListener("change", async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1859,6 +1910,10 @@ function workoutV2BindEvents(mount) {
       workoutV2UiState.historyFrom = "";
       workoutV2UiState.historyTo = "";
       workoutV2UiState.pageByView.History = 1;
+      renderWorkoutV2();
+    } else if (action === "clear-progress-range") {
+      workoutV2UiState.progressFrom = "";
+      workoutV2UiState.progressTo = "";
       renderWorkoutV2();
     } else if (action === "confirm-import") {
       button.disabled = true;
