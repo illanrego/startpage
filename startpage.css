@@ -466,6 +466,7 @@
 
 #workoutContainer {
     display: none;
+    flex-direction: column;
     min-width: 560px;
     min-height: 420px;
     width: min(980px, 68vw);
@@ -476,10 +477,15 @@
     box-sizing: border-box;
 }
 
+#workoutContainer .titleBar {
+    flex: none;
+}
+
+/* Fills exactly the frame left under the title bar, so the scrollbar is never clipped. */
 #workoutTableDiv {
-    width: 100%;
-    height: calc(100% - 34px);
+    flex: 1 1 auto;
     min-height: 0;
+    width: 100%;
     overflow: auto;
     box-sizing: border-box;
 }

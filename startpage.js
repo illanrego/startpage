@@ -5800,8 +5800,9 @@ function hideQuadro(idQuadro) {
   const quadro = document.getElementById(`${idQuadro}`);
   if (!quadro) return;
   const opening = window.getComputedStyle(quadro).display === "none";
+  const flexQuadros = ["chatContainer", "workoutContainer"];
   quadro.style.display = opening
-    ? (idQuadro === "chatContainer" ? "flex" : "block")
+    ? (flexQuadros.includes(idQuadro) ? "flex" : "block")
     : "none";
   if (opening) {
     void syncFeatureForContainer(idQuadro);

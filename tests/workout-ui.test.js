@@ -74,12 +74,17 @@ test("Workout window is stretchable like the other feature windows", () => {
   const app = fs.readFileSync(path.join(root, "workout-v2.js"), "utf8");
 
   assert.match(shell, /makeResizable\("workoutContainer", \{\s*minWidth: 560,\s*minHeight: 420,\s*onResize: scheduleWorkoutV2ChartRender,/);
+  assert.match(shell, /flexQuadros = \["chatContainer", "workoutContainer"\]/);
   assert.match(app, /function scheduleWorkoutV2ChartRender\(\)/);
   assert.match(css, /#workoutContainer \{[^}]*overflow: hidden;/);
-  assert.match(css, /#workoutTableDiv \{[^}]*overflow: auto;/);
+  // The scroll area is a flex child, so the panel can never be clipped mid-content.
+  assert.match(css, /#workoutTableDiv \{[^}]*flex: 1 1 auto;[^}]*overflow: auto;/);
+  assert.doesNotMatch(css, /#workoutTableDiv \{[^}]*calc\(100% - 34px\)/);
+  // The graph is drawn from the space available, so its axis stays on screen.
   assert.match(app, /function workoutV2ChartWidth\(\)/);
-  assert.match(app, /const width = workoutV2ChartWidth\(\);/);
-  assert.match(app, /viewBox="0 0 \$\{width\} \$\{height\}"/);
+  assert.match(app, /function workoutV2ChartHeight\(\)/);
+  assert.match(app, /const width = workoutV2ChartWidth\(\);\s*const height = workoutV2ChartHeight\(\);/);
+  assert.match(app, /viewBox="0 0 \$\{width\} \$\{height\}" style="height:\$\{height\}px"/);
 });
 
 test("Workout cloud history loads through the feature sync lifecycle", () => {

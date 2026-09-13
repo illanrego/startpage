@@ -1114,6 +1114,16 @@ function workoutV2ChartWidth() {
   return Math.round(Math.max(WORKOUT_V2_CHART.minWidth, Math.min(WORKOUT_V2_CHART.maxWidth, measured)));
 }
 
+// The graph is mounted from the space left under the controls, not from a fixed
+// 300px block, so its x-axis stays on screen in a short window.
+const WORKOUT_V2_CHART_HEIGHT = { min: 200, max: 340, ratio: 0.42 };
+
+function workoutV2ChartHeight() {
+  const viewport = typeof window !== "undefined" ? window.innerHeight || 0 : 0;
+  if (!viewport) return WORKOUT_V2_CHART.height;
+  return Math.round(Math.max(WORKOUT_V2_CHART_HEIGHT.min, Math.min(WORKOUT_V2_CHART_HEIGHT.max, viewport * WORKOUT_V2_CHART_HEIGHT.ratio)));
+}
+
 let workoutV2ChartRenderFrame = 0;
 
 // Resize hook for makeResizable: one redraw per frame, only while the graph is on screen.
@@ -1133,8 +1143,9 @@ function workoutV2LineChart(points, metric, label) {
     .map((point) => ({ ...point, value: point[metric] }))
     .filter((point) => Number.isFinite(point.value));
   if (!valid.length) return '<div class="workout-v2-chart-empty">No values for this metric in the selected range.</div>';
-  const { height, left, right, top, bottom } = WORKOUT_V2_CHART;
+  const { left, right, top, bottom } = WORKOUT_V2_CHART;
   const width = workoutV2ChartWidth();
+  const height = workoutV2ChartHeight();
   const maxDateTicks = Math.max(4, Math.min(12, Math.round(width / 95)));
   const meta = WORKOUT_V2_METRICS[metric] || { label: metric, unit: "" };
   const plotWidth = width - left - right;
@@ -1194,7 +1205,7 @@ function workoutV2LineChart(points, metric, label) {
       + ` data-tip-sets="${workoutV2Escape(workoutV2SetList(point.sets))}"`
       + ` data-tip-rows="${workoutV2Escape(JSON.stringify(rows))}"${click}></rect>`;
   }).join("");
-  return `<div class="workout-v2-chart"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${workoutV2Escape(label)} · ${valid.length} sessions · ${workoutV2Escape(workoutV2AxisLabel(axis.min, axis.step))} to ${workoutV2Escape(workoutV2AxisLabel(axis.max, axis.step))}">
+  return `<div class="workout-v2-chart"><svg viewBox="0 0 ${width} ${height}" style="height:${height}px" role="img" aria-label="${workoutV2Escape(label)} · ${valid.length} sessions · ${workoutV2Escape(workoutV2AxisLabel(axis.min, axis.step))} to ${workoutV2Escape(workoutV2AxisLabel(axis.max, axis.step))}">
     <text class="chart-axis-title" x="16" y="${top + plotHeight / 2}" text-anchor="middle" transform="rotate(-90 16 ${top + plotHeight / 2})">${workoutV2Escape(meta.label)}</text>
     ${yAxis}
     <line x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}" class="chart-axis"/>
