@@ -5167,6 +5167,11 @@ window.onload = function () {
     minWidth: 520,
     minHeight: 420,
   });
+  makeResizable("workoutContainer", {
+    minWidth: 560,
+    minHeight: 420,
+    onResize: scheduleWorkoutV2ChartRender,
+  });
 };
 
 var dragObj = null;

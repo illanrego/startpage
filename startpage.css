@@ -465,14 +465,22 @@
 }
 
 #workoutContainer {
-    height: fit-content;
-    padding: 5px;
-    min-width: 720px;
-    max-width: 980px;
-  }
+    display: none;
+    min-width: 560px;
+    min-height: 420px;
+    width: min(980px, 68vw);
+    height: min(86vh, 780px);
+    max-width: 96vw;
+    max-height: 96vh;
+    overflow: hidden;
+    box-sizing: border-box;
+}
 
 #workoutTableDiv {
     width: 100%;
+    height: calc(100% - 34px);
+    min-height: 0;
+    overflow: auto;
     box-sizing: border-box;
 }
 

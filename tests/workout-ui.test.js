@@ -68,6 +68,20 @@ test("Workout graphs label both axes and expose per-point tooltips", () => {
   assert.match(css, /\.workout-v2-chart \.chart-cursor\[hidden\]/);
 });
 
+test("Workout window is stretchable like the other feature windows", () => {
+  const shell = fs.readFileSync(path.join(root, "startpage.js"), "utf8");
+  const css = fs.readFileSync(path.join(root, "startpage.css"), "utf8");
+  const app = fs.readFileSync(path.join(root, "workout-v2.js"), "utf8");
+
+  assert.match(shell, /makeResizable\("workoutContainer", \{\s*minWidth: 560,\s*minHeight: 420,\s*onResize: scheduleWorkoutV2ChartRender,/);
+  assert.match(app, /function scheduleWorkoutV2ChartRender\(\)/);
+  assert.match(css, /#workoutContainer \{[^}]*overflow: hidden;/);
+  assert.match(css, /#workoutTableDiv \{[^}]*overflow: auto;/);
+  assert.match(app, /function workoutV2ChartWidth\(\)/);
+  assert.match(app, /const width = workoutV2ChartWidth\(\);/);
+  assert.match(app, /viewBox="0 0 \$\{width\} \$\{height\}"/);
+});
+
 test("Workout cloud history loads through the feature sync lifecycle", () => {
   const shell = fs.readFileSync(path.join(root, "startpage.js"), "utf8");
   const workout = fs.readFileSync(path.join(root, "workout-v2.js"), "utf8");

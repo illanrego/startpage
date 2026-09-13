@@ -6,7 +6,7 @@ const WORKOUT_V2_VIEWS = ["Overview", "History", "Exercises", "Import"];
 const WORKOUT_V2_PAGE_SIZE = 10;
 // Chart geometry shared by the SVG line chart (fixed 760x300 viewBox) and the
 // HTML bar chart (fixed pixel track so the gridlines line up with the bars).
-const WORKOUT_V2_CHART = { width: 760, height: 300, left: 66, right: 18, top: 24, bottom: 60, maxDateTicks: 8 };
+const WORKOUT_V2_CHART = { width: 760, height: 300, left: 66, right: 18, top: 24, bottom: 60, inset: 34, minWidth: 480, maxWidth: 1600 };
 const WORKOUT_V2_BAR_TRACK_PX = 150;
 const WORKOUT_V2_BAR_LABEL_PX = 14;
 // Metric metadata drives the graph picker, the axis titles and the tooltip rows.
@@ -1105,12 +1105,37 @@ function workoutV2FilteredSeries(series) {
   return series.filter((point) => new Date(`${point.dateKey}T12:00:00`) >= cutoff);
 }
 
+// The SVG is drawn at the panel's real pixel width, so stretching the window gives
+// the graph more room (and more date ticks) instead of blowing up every label.
+function workoutV2ChartWidth() {
+  const mount = document.getElementById("workoutTableDiv");
+  const measured = mount && mount.clientWidth ? mount.clientWidth - WORKOUT_V2_CHART.inset : 0;
+  if (!measured) return WORKOUT_V2_CHART.width;
+  return Math.round(Math.max(WORKOUT_V2_CHART.minWidth, Math.min(WORKOUT_V2_CHART.maxWidth, measured)));
+}
+
+let workoutV2ChartRenderFrame = 0;
+
+// Resize hook for makeResizable: one redraw per frame, only while the graph is on screen.
+function scheduleWorkoutV2ChartRender() {
+  if (workoutV2ChartRenderFrame) return;
+  const schedule = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+  workoutV2ChartRenderFrame = schedule(() => {
+    workoutV2ChartRenderFrame = 0;
+    const mount = document.getElementById("workoutTableDiv");
+    if (!mount || !mount.clientWidth || workoutV2UiState.view !== "Exercises") return;
+    renderWorkoutV2();
+  });
+}
+
 function workoutV2LineChart(points, metric, label) {
   const valid = points
     .map((point) => ({ ...point, value: point[metric] }))
     .filter((point) => Number.isFinite(point.value));
   if (!valid.length) return '<div class="workout-v2-chart-empty">No values for this metric in the selected range.</div>';
-  const { width, height, left, right, top, bottom, maxDateTicks } = WORKOUT_V2_CHART;
+  const { height, left, right, top, bottom } = WORKOUT_V2_CHART;
+  const width = workoutV2ChartWidth();
+  const maxDateTicks = Math.max(4, Math.min(12, Math.round(width / 95)));
   const meta = WORKOUT_V2_METRICS[metric] || { label: metric, unit: "" };
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
