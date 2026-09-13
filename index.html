@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="win98.ttf">
     <link rel="icon" href="./imagens/debianlogo.png">
     <script src="config.js?v=20260624-cloud-worker"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="workout-core.js?v=20260902-workout-v2" defer></script>
     <script src="startpage.js?v=20260902-workout-v2" defer></script>
     <script src="workout-v2.js?v=20260902-workout-v2" defer></script>
@@ -182,7 +182,7 @@
         <div id="habiticaSyncSection">
           <div id="habiticaSyncToolbar">
             <span>Dailies</span>
-            <button id="habiticaSyncBtn" type="button">sync</button>
+            <button id="habiticaSyncBtn" type="button">Habitica sync</button>
           </div>
           <p id="habiticaSyncStatus">Not synced yet.</p>
           <div id="tasklistContainer">
@@ -213,7 +213,7 @@
           <div id="todoToolbar">
             <input type="text" id="taskInput" placeholder="Add task">
             <button id="todoAddBtn" onclick="addTask()">+</button>
-            <button id="todoSyncBtn" type="button">sync</button>
+            <button id="todoSyncBtn" type="button">Habitica sync</button>
           </div>
           <p id="todoSyncStatus">Ready.</p>
           <ul id="taskList"></ul>
@@ -408,7 +408,7 @@
         <button id="backendAuthSendBtn" type="button">login</button>
         <button id="backendAuthCreateBtn" type="button">create</button>
         <button id="backendAuthResetBtn" type="button">reset</button>
-        <button id="backendReloadBtn" type="button" hidden>reload</button>
+        <button id="backendReloadBtn" type="button" hidden>sync all</button>
         <button id="backendAuthSignOutBtn" type="button" hidden>logout</button>
       </div>
       <div id="connectionsToolbar">

@@ -12,13 +12,28 @@ const openingBalanceSource = fs.readFileSync(
   "utf8",
 );
 
-test("Finance signed-in lifecycle loads and refreshes the database state", () => {
+test("Signed-in lifecycle defers feature data until a window opens", () => {
   assert.match(appSource, /async function loadBackendSession\(session\)/);
-  assert.match(appSource, /if \(shouldImportLocal\) await importFinanceLocalDataOnce\(\);/);
-  assert.match(appSource, /await loadFinanceRecurringState\(\);/);
-  assert.match(appSource, /await refreshFinanceBackendState\(\);/);
   assert.match(appSource, /function handleBackendSession\(session\)/);
   assert.match(appSource, /backendSessionLoadPromise \|\| Promise\.resolve\(\)/);
+  assert.match(appSource, /function syncFeatureForContainer\(containerId, options = \{\}\)/);
+  assert.match(appSource, /if \(opening\) \{\s*void syncFeatureForContainer\(idQuadro\);/);
+
+  const loginLifecycle = appSource.match(
+    /async function loadBackendSession\(session\) \{([\s\S]*?)\n\}\n\nlet backendSessionLoadKey/,
+  )?.[1] || "";
+  assert.doesNotMatch(loginLifecycle, /refreshBackendModules/);
+  assert.doesNotMatch(loginLifecycle, /import[A-Za-z]+LocalDataOnce/);
+  assert.match(loginLifecycle, /syncVisibleFeatures/);
+});
+
+test("Finance sync remains available on demand", () => {
+  assert.match(
+    appSource,
+    /if \(key === "finance"\) \{[\s\S]*?await loadFinanceRecurringState\(\);[\s\S]*?await refreshFinanceBackendState\(\);/,
+  );
+  assert.match(appSource, /const BACKEND_SYNC_ALL_CONTAINER_IDS = \[[\s\S]*?"financeContainer"/);
+  assert.match(appSource, /syncFeatureForContainer\(containerId, \{ force: true \}\)/);
 });
 
 test("Finance logs use an owned Supabase table for CRUD and cross-device reads", () => {

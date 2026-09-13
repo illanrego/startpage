@@ -37,3 +37,15 @@ test("Gamify delegates Physique dates to Workout V2", () => {
   assert.match(app, /FITNESS_UNKNOWN_TRAINING/);
   assert.match(app, /loadWorkoutV2BackendState/);
 });
+
+test("Workout cloud history loads through the feature sync lifecycle", () => {
+  const shell = fs.readFileSync(path.join(root, "startpage.js"), "utf8");
+  const workout = fs.readFileSync(path.join(root, "workout-v2.js"), "utf8");
+
+  assert.match(shell, /workoutContainer: \{ key: "workout"/);
+  assert.match(shell, /if \(key === "workout"\) \{\s*await loadWorkoutV2BackendState\(\);/);
+  const renderFunction = workout.match(
+    /function renderWorkoutV2\(\) \{([\s\S]*?)\n\}\n\nfunction workoutV2OpenWindow/,
+  )?.[1] || "";
+  assert.doesNotMatch(renderFunction, /loadWorkoutV2BackendState/);
+});

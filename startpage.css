@@ -1624,6 +1624,19 @@ legend {
   padding-bottom: 5px;
 }
 
+.titleBar .feature-sync-btn {
+  width: auto;
+  margin-left: auto;
+  padding: 0 7px 3px;
+  font-family: "win98", sans-serif;
+  font-size: 12px;
+}
+
+.feature-sync-loading > :not(.titleBar) {
+  pointer-events: none;
+  opacity: 0.65;
+}
+
 
 #calendarContainer td:nth-of-type(1) {
   background-color: var(--secondary-color);
@@ -3128,6 +3141,12 @@ legend {
     height: 36px;
     font-size: 20px;
     margin: 2px;
+  }
+
+  .titleBar .feature-sync-btn {
+    width: auto;
+    padding-inline: 8px;
+    font-size: 12px;
   }
 
   /* ----- SKILLS / GAMIFY ----- */

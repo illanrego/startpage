@@ -845,12 +845,7 @@ async function addTask() {
 
 document.addEventListener("DOMContentLoaded", function () {
   renderTaskList();
-  void syncHabiticaTodosToLocalTaskList().then((result) => {
-    if (!result) return;
-    setTodoSyncStatus(`Synced ${result.pending} pending Habitica todo(s).`);
-  }).catch(() => {
-    setTodoSyncStatus("Could not sync Habitica todos on startup.");
-  });
+  setTodoSyncStatus("Ready. Open this window to sync cloud tasks; use Habitica sync when needed.");
 
   const taskInput = document.getElementById("taskInput");
   if (taskInput) {
@@ -961,26 +956,7 @@ function formatConnectionDate(value) {
   return date.toLocaleString();
 }
 
-function moduleScopeLabel(scope) {
-  const labels = {
-    finance_v1: "Finance",
-    tasks_v1: "Tasks",
-    kanban_v1: "Kanban",
-    trackers_v1: "Gamify",
-    calendar_notes_v1: "Calendar",
-    workout_v1: "Workout",
-    lists_v1: "Lists",
-    planner_v1: "Planner",
-  };
-  return labels[scope] || scope;
-}
-
 function buildConnectionRows() {
-  const importState = getBackendImportState()[getBackendUserId()] || {};
-  const importedScopes = Object.entries(importState)
-    .filter(([, value]) => Boolean(value))
-    .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
-
   const backendStatus = backendState.session
     ? "active"
     : backendState.client
@@ -1162,18 +1138,27 @@ function buildConnectionRows() {
     ].filter(Boolean),
   });
 
+  const featureGroups = new Map();
+  Object.values(FEATURE_SYNC_DEFINITIONS).forEach((definition) => {
+    if (definition.key === "connections") return;
+    featureGroups.set(definition.key, definition.label);
+  });
+  const featureStatuses = Array.from(featureGroups, ([key, label]) => ({
+    label,
+    status: featureSyncState.get(key)?.status || "idle",
+  }));
+  const readyFeatures = featureStatuses.filter((feature) => feature.status === "ready").length;
+  const hasSyncError = featureStatuses.some((feature) => feature.status === "error");
+  const isSyncing = featureStatuses.some((feature) => feature.status === "loading");
   rows.push({
     key: "sync",
     name: "Sync",
-    status: backendState.session ? (importedScopes.length > 0 ? "active" : "local") : "disabled",
-    detail: backendState.session ? `${importedScopes.length} modules` : "signed out",
+    status: !backendState.session ? "disabled" : hasSyncError ? "error" : readyFeatures > 0 ? "active" : "local",
+    detail: backendState.session
+      ? `${readyFeatures}/${featureStatuses.length} loaded${isSyncing ? " (syncing)" : ""}`
+      : "signed out",
     details: backendState.session
-      ? importedScopes.length > 0
-        ? importedScopes.map(([scope, timestamp]) => {
-            const at = formatConnectionDate(timestamp);
-            return `${moduleScopeLabel(scope)}: ${at || "synced"}`;
-          })
-        : ["No module import state yet"]
+      ? featureStatuses.map((feature) => `${feature.label}: ${feature.status}`)
       : ["Sign in to sync modules"],
   });
 
@@ -1277,16 +1262,11 @@ function describeBackendError(error) {
 }
 
 function setBackendSyncedStatus(prefix) {
-  const modules = [
-    financeRemoteState.loaded,
-    taskRemoteState.loaded,
-    kanbanRemoteState.loaded,
-    trackerRemoteState.loaded,
-    calendarRemoteState.loaded,
-    workoutRemoteState.loaded,
-    listRemoteState.loaded,
-  ].filter(Boolean).length;
-  setBackendAuthStatus(`${prefix}: ${modules}/7 module(s) synced`);
+  const synced = BACKEND_SYNC_ALL_CONTAINER_IDS.filter((containerId) => {
+    const key = FEATURE_SYNC_DEFINITIONS[containerId].key;
+    return featureSyncState.get(key)?.status === "ready";
+  }).length;
+  setBackendAuthStatus(`${prefix}: ${synced}/${BACKEND_SYNC_ALL_CONTAINER_IDS.length} feature(s) synced`);
 }
 
 async function ensureSupabaseProfile() {
@@ -1468,79 +1448,77 @@ async function syncConfiguredIntegrationsState() {
 
   const workerAuthConfigured = hasWorkerAuthSession();
   const habiticaMetadata = getIntegrationMetadata("habitica");
-  await upsertBackendIntegration("habitica", {
-    status: workerAuthConfigured ? "active" : "disabled",
-    metadata: {
-      ...habiticaMetadata,
-      proxyBaseUrl: getHabiticaProxyBaseUrl(),
-      usesSupabaseAuth: true,
-      skillDailyMapConfigured:
-        typeof HABITICA_SKILL_DAILY_MAP === "object" && Boolean(HABITICA_SKILL_DAILY_MAP),
-    },
-  });
-
   const clickupMetadata = getIntegrationMetadata("clickup");
-  await upsertBackendIntegration("clickup", {
-    status: workerAuthConfigured ? "active" : "disabled",
-    metadata: {
-      ...clickupMetadata,
-      configured: workerAuthConfigured,
-      directClient: false,
-      proxyBaseUrl: getWorkerProxyBaseUrl(),
-      usesSupabaseAuth: true,
-    },
-  });
-
   const openAiMetadata = getIntegrationMetadata("openai");
-  await upsertBackendIntegration("openai", {
-    status: workerAuthConfigured ? "active" : "disabled",
-    metadata: {
-      ...openAiMetadata,
-      configured: workerAuthConfigured,
-      directClient: false,
-      proxyBaseUrl: getHabiticaProxyBaseUrl(),
-      usesSupabaseAuth: true,
-      model: "gpt-4o-mini",
-    },
-  });
-
   const geminiMetadata = getIntegrationMetadata("gemini");
-  await upsertBackendIntegration("gemini", {
-    status: workerAuthConfigured ? "active" : "disabled",
-    metadata: {
-      ...geminiMetadata,
-      configured: workerAuthConfigured,
-      directClient: false,
-      proxyBaseUrl: getHabiticaProxyBaseUrl(),
-      usesSupabaseAuth: true,
-      model: "gemini-3.5-flash",
-    },
-  });
-
   const deepseekMetadata = getIntegrationMetadata("deepseek");
-  await upsertBackendIntegration("deepseek", {
-    status: workerAuthConfigured ? "active" : "disabled",
-    metadata: {
-      ...deepseekMetadata,
-      configured: workerAuthConfigured,
-      directClient: false,
-      proxyBaseUrl: getHabiticaProxyBaseUrl(),
-      usesSupabaseAuth: true,
-      model: "deepseek-chat",
-    },
-  });
-
   const llamaMetadata = getIntegrationMetadata("llama");
   const llamaCurrent = integrationRemoteState.integrations.llama;
-  await upsertBackendIntegration("llama", {
-    status: llamaCurrent?.status || "disabled",
-    metadata: {
-      ...llamaMetadata,
-      configured: true,
-      directClient: true,
-      model: LOCAL_LLAMA_MODEL,
-    },
-  });
+
+  await Promise.all([
+    upsertBackendIntegration("habitica", {
+      status: workerAuthConfigured ? "active" : "disabled",
+      metadata: {
+        ...habiticaMetadata,
+        proxyBaseUrl: getHabiticaProxyBaseUrl(),
+        usesSupabaseAuth: true,
+        skillDailyMapConfigured:
+          typeof HABITICA_SKILL_DAILY_MAP === "object" && Boolean(HABITICA_SKILL_DAILY_MAP),
+      },
+    }),
+    upsertBackendIntegration("clickup", {
+      status: workerAuthConfigured ? "active" : "disabled",
+      metadata: {
+        ...clickupMetadata,
+        configured: workerAuthConfigured,
+        directClient: false,
+        proxyBaseUrl: getWorkerProxyBaseUrl(),
+        usesSupabaseAuth: true,
+      },
+    }),
+    upsertBackendIntegration("openai", {
+      status: workerAuthConfigured ? "active" : "disabled",
+      metadata: {
+        ...openAiMetadata,
+        configured: workerAuthConfigured,
+        directClient: false,
+        proxyBaseUrl: getHabiticaProxyBaseUrl(),
+        usesSupabaseAuth: true,
+        model: "gpt-4o-mini",
+      },
+    }),
+    upsertBackendIntegration("gemini", {
+      status: workerAuthConfigured ? "active" : "disabled",
+      metadata: {
+        ...geminiMetadata,
+        configured: workerAuthConfigured,
+        directClient: false,
+        proxyBaseUrl: getHabiticaProxyBaseUrl(),
+        usesSupabaseAuth: true,
+        model: "gemini-3.5-flash",
+      },
+    }),
+    upsertBackendIntegration("deepseek", {
+      status: workerAuthConfigured ? "active" : "disabled",
+      metadata: {
+        ...deepseekMetadata,
+        configured: workerAuthConfigured,
+        directClient: false,
+        proxyBaseUrl: getHabiticaProxyBaseUrl(),
+        usesSupabaseAuth: true,
+        model: "deepseek-chat",
+      },
+    }),
+    upsertBackendIntegration("llama", {
+      status: llamaCurrent?.status || "disabled",
+      metadata: {
+        ...llamaMetadata,
+        configured: true,
+        directClient: true,
+        model: LOCAL_LLAMA_MODEL,
+      },
+    }),
+  ]);
 }
 
 async function recordIntegrationStatus(provider, status, metadata = {}) {
@@ -1575,8 +1553,167 @@ async function saveIntegrationMetadata(provider, metadata, status = "active") {
   renderConnectionsStatus();
 }
 
-async function refreshBackendModules(options = {}) {
-  const shouldImportLocal = options.importLocal !== false;
+const FEATURE_SYNC_DEFINITIONS = {
+  skillsContainer: { key: "gamify", label: "Gamify" },
+  dailiesContainer: { key: "tasks", label: "Tasks" },
+  todoContainer: { key: "tasks", label: "Tasks" },
+  plannerContainer: { key: "planner", label: "Planner" },
+  recContainer: { key: "lists", label: "Lists" },
+  nextFeatures: { key: "lists", label: "Lists" },
+  ideasContainer: { key: "ideas", label: "Ideas" },
+  workoutContainer: { key: "workout", label: "Workout" },
+  calendarContainer: { key: "calendar", label: "Calendar" },
+  kanbanContainer: { key: "kanban", label: "Kanban" },
+  financeContainer: { key: "finance", label: "Finance" },
+  connectionsContainer: { key: "connections", label: "Connections" },
+};
+const BACKEND_SYNC_ALL_CONTAINER_IDS = [
+  "todoContainer",
+  "kanbanContainer",
+  "skillsContainer",
+  "calendarContainer",
+  "workoutContainer",
+  "recContainer",
+  "plannerContainer",
+  "financeContainer",
+];
+const featureSyncState = new Map();
+
+function updateFeatureSyncUi(containerId, status) {
+  const definition = FEATURE_SYNC_DEFINITIONS[containerId];
+  if (!definition) return;
+  Object.entries(FEATURE_SYNC_DEFINITIONS).forEach(([candidateId, candidate]) => {
+    if (candidate.key !== definition.key) return;
+    const container = document.getElementById(candidateId);
+    const button = container?.querySelector("[data-feature-sync]");
+    if (container) {
+      container.classList.toggle("feature-sync-loading", status === "loading");
+      container.setAttribute("aria-busy", status === "loading" ? "true" : "false");
+    }
+    if (!button) return;
+    button.disabled = status === "loading" || !backendState.session;
+    button.textContent = status === "loading" ? "syncing…" : status === "error" ? "retry sync" : "sync";
+    button.title = backendState.session ? "Sync this feature now" : "Sign in to sync";
+  });
+}
+
+function resetFeatureSyncState() {
+  featureSyncState.clear();
+  Object.keys(FEATURE_SYNC_DEFINITIONS).forEach((containerId) => {
+    updateFeatureSyncUi(containerId, "idle");
+  });
+}
+
+async function loadFeatureSyncGroup(key) {
+  if (key === "tasks") {
+    await loadTaskBackendState();
+    renderTaskList();
+    renderDailies();
+    return;
+  }
+  if (key === "kanban") {
+    await loadKanbanBackendState();
+    renderKanbanBoard();
+    return;
+  }
+  if (key === "gamify") {
+    await loadTrackerBackendState();
+    renderTrackerBackedUi();
+    return;
+  }
+  if (key === "calendar") {
+    await loadCalendarBackendState();
+    generateCalendar();
+    return;
+  }
+  if (key === "workout") {
+    await loadWorkoutV2BackendState();
+    renderWorkout();
+    return;
+  }
+  if (key === "lists") {
+    await loadListsBackendState();
+    renderSimpleLists();
+    return;
+  }
+  if (key === "planner") {
+    await loadPlannerBackendState();
+    renderPlanner();
+    return;
+  }
+  if (key === "finance") {
+    if (!integrationRemoteState.loaded) await loadIntegrationsBackendState();
+    await loadFinanceRecurringState();
+    await refreshFinanceBackendState();
+    return;
+  }
+  if (key === "connections") {
+    await loadIntegrationsBackendState();
+    renderConnectionsStatus();
+    return;
+  }
+  if (key === "ideas") {
+    const tasks = await fetchHabiticaTasksFromProxy();
+    syncIdeasFromHabiticaTasks(tasks);
+  }
+}
+
+function syncFeatureForContainer(containerId, options = {}) {
+  const definition = FEATURE_SYNC_DEFINITIONS[containerId];
+  if (!definition || !backendState.client || !backendState.session) return Promise.resolve();
+  const current = featureSyncState.get(definition.key);
+  if (current?.status === "loading") return current.promise;
+  if (current?.status === "ready" && !options.force) return Promise.resolve();
+
+  updateFeatureSyncUi(containerId, "loading");
+  const promise = loadFeatureSyncGroup(definition.key)
+    .then(() => {
+      featureSyncState.set(definition.key, { status: "ready", promise: null });
+      updateFeatureSyncUi(containerId, "ready");
+    })
+    .catch((error) => {
+      console.error(`${definition.label} sync error:`, error);
+      featureSyncState.set(definition.key, { status: "error", promise: null });
+      updateFeatureSyncUi(containerId, "error");
+    });
+  featureSyncState.set(definition.key, { status: "loading", promise });
+  return promise;
+}
+
+function installFeatureSyncButtons() {
+  Object.keys(FEATURE_SYNC_DEFINITIONS).forEach((containerId) => {
+    const container = document.getElementById(containerId);
+    const titleBar = container?.querySelector(":scope > .titleBar");
+    if (!titleBar || titleBar.querySelector("[data-feature-sync]")) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "feature-sync-btn";
+    button.dataset.featureSync = containerId;
+    button.textContent = "sync";
+    button.disabled = !backendState.session;
+    button.title = backendState.session ? "Sync this feature now" : "Sign in to sync";
+    button.addEventListener("click", function () {
+      void syncFeatureForContainer(containerId, { force: true });
+    });
+    const closeButton = Array.from(titleBar.children).find((child) => child.tagName === "BUTTON");
+    titleBar.insertBefore(button, closeButton || null);
+  });
+}
+
+function syncVisibleFeatures() {
+  const seen = new Set();
+  const pending = [];
+  Object.entries(FEATURE_SYNC_DEFINITIONS).forEach(([containerId, definition]) => {
+    if (seen.has(definition.key)) return;
+    const container = document.getElementById(containerId);
+    if (!container || window.getComputedStyle(container).display === "none") return;
+    seen.add(definition.key);
+    pending.push(syncFeatureForContainer(containerId));
+  });
+  return Promise.all(pending);
+}
+
+async function refreshBackendModules() {
   if (!backendState.client || !backendState.session) {
     setBackendAuthStatus("Backend: sign in before reload");
     return;
@@ -1586,61 +1723,15 @@ async function refreshBackendModules(options = {}) {
   await loadIntegrationsBackendState();
   await syncConfiguredIntegrationsState();
   await loadIntegrationsBackendState();
-
-  if (shouldImportLocal) await importTaskLocalDataOnce();
-  await loadTaskBackendState();
-  if (hasWorkerAuthSession()) {
-    try {
-      const habiticaTasks = await fetchHabiticaTasksFromProxy();
-      await syncHabiticaTodosToLocalTaskList(habiticaTasks);
-      await syncHabiticaDailiesToTaskList(habiticaTasks);
-      syncIdeasFromHabiticaTasks(habiticaTasks);
-    } catch (error) {
-      console.error("Habitica task sync during backend refresh failed:", error);
-    }
-  }
-  renderTaskList();
-  renderDailies();
-  setTodoSyncStatus(
-    `Backend tasks synced (${taskRemoteState.todos.length} todo(s), ${taskRemoteState.dailies.length} daily/ies).`,
-  );
-
-  if (shouldImportLocal) await importKanbanLocalDataOnce();
-  await loadKanbanBackendState();
-  renderKanbanBoard();
-
-  if (shouldImportLocal) await importTrackerLocalDataOnce();
-  await loadTrackerBackendState();
-  renderTrackerBackedUi();
-
-  if (shouldImportLocal) await importCalendarLocalDataOnce();
-  await loadCalendarBackendState();
-  generateCalendar();
-
-  if (shouldImportLocal) await importWorkoutLocalDataOnce();
-  await loadWorkoutBackendState();
-  if (typeof loadWorkoutV2BackendState === "function") {
-    await loadWorkoutV2BackendState({ importLocal: shouldImportLocal });
-  }
-  renderWorkout();
-
-  if (shouldImportLocal) await importListsLocalDataOnce();
-  await loadListsBackendState();
-  renderSimpleLists();
-
-  if (shouldImportLocal) await importPlannerLocalDataOnce();
-  await loadPlannerBackendState();
-  renderPlanner();
-
-  if (shouldImportLocal) await importFinanceLocalDataOnce();
-  await loadFinanceRecurringState();
-  await refreshFinanceBackendState();
-
+  await Promise.all(BACKEND_SYNC_ALL_CONTAINER_IDS.map((containerId) =>
+    syncFeatureForContainer(containerId, { force: true })
+  ));
   renderConnectionsStatus();
 }
 
 async function loadBackendSession(session) {
   backendState.session = session;
+  resetFeatureSyncState();
   updateBackendAuthUi();
 
   if (!session) {
@@ -1667,33 +1758,14 @@ async function loadBackendSession(session) {
     return;
   }
 
+  setBackendAuthStatus(`Backend: signed in as ${session.user.email || "user"}; features sync when opened`);
   try {
     await ensureSupabaseProfile();
     await syncBackendProfileSettings();
-    await refreshBackendModules({ importLocal: true });
-    setBackendSyncedStatus(`Backend: synced as ${session.user.email || "user"}`);
+    await syncVisibleFeatures();
   } catch (error) {
-    console.error("Backend session error:", error);
-    financeRemoteState.loaded = false;
-    taskRemoteState.loaded = false;
-    kanbanRemoteState.loaded = false;
-    trackerRemoteState.loaded = false;
-    calendarRemoteState.loaded = false;
-    workoutRemoteState.loaded = false;
-    if (typeof resetWorkoutV2BackendState === "function") resetWorkoutV2BackendState();
-    listRemoteState.loaded = false;
-    plannerRemoteState.loaded = false;
-    integrationRemoteState.loaded = false;
-    setBackendAuthStatus(`Backend: ${describeBackendError(error)}; using local data`);
-    renderFinanceList();
-    renderTaskList();
-    renderDailies();
-    renderKanbanBoard();
-    generateCalendar();
-    renderWorkout();
-    renderSimpleLists();
-    renderPlanner();
-    renderConnectionsStatus();
+    console.error("Backend profile/settings error:", error);
+    setBackendAuthStatus(`Backend: signed in; profile settings failed (${describeBackendError(error)})`);
   }
 }
 
@@ -1702,7 +1774,7 @@ let backendSessionLoadPromise = null;
 
 function handleBackendSession(session) {
   const sessionKey = session
-    ? `${session.user?.id || ""}:${session.expires_at || session.access_token || ""}`
+    ? session.user?.id || "signed-in"
     : "signed-out";
   if (sessionKey === backendSessionLoadKey) {
     return backendSessionLoadPromise || Promise.resolve();
@@ -1836,7 +1908,7 @@ async function refreshBackendFromServer() {
   }
 
   try {
-    await refreshBackendModules({ importLocal: false });
+    await refreshBackendModules();
     setBackendSyncedStatus("Backend: reloaded");
   } catch (error) {
     console.error("Backend reload error:", error);
@@ -1960,6 +2032,7 @@ function initializeBackendAuth() {
 }
 
 document.addEventListener("DOMContentLoaded", initializeBackendAuth);
+document.addEventListener("DOMContentLoaded", installFeatureSyncButtons);
 
 document.addEventListener("DOMContentLoaded", function () {
   renderConnectionsStatus();
@@ -5606,6 +5679,9 @@ function hideQuadro(idQuadro) {
   quadro.style.display = opening
     ? (idQuadro === "chatContainer" ? "flex" : "block")
     : "none";
+  if (opening) {
+    void syncFeatureForContainer(idQuadro);
+  }
   if (opening && idQuadro === "skillsContainer") {
     scheduleGamifyCalendarRender();
   }

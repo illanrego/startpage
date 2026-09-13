@@ -817,9 +817,6 @@ function renderWorkoutV2() {
   const mount = document.getElementById("workoutTableDiv");
   if (!mount) return;
   workoutV2Data();
-  if (workoutV2HasBackend() && !workoutV2UiState.remoteLoaded && !workoutV2UiState.remoteLoading) {
-    void loadWorkoutV2BackendState();
-  }
   let content = "";
   if (workoutV2UiState.view === "Templates") content = workoutV2RenderTemplates();
   else if (workoutV2UiState.view === "History") content = workoutV2RenderHistory();
