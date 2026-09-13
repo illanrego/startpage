@@ -51,13 +51,15 @@ test("Workout graphs label both axes and expose per-point tooltips", () => {
 
   // Axis scaffold: nice ticks on the value axis, thinned dates on the time axis, both named.
   assert.match(app, /WorkoutCore\.niceAxisTicks\(/);
-  assert.match(app, /WorkoutCore\.pickTickIndexes\(/);
+  assert.match(app, /WorkoutCore\.timeAxisTicks\(/);
   assert.match(app, /class="chart-axis-title"/);
   assert.match(app, /chart-tick-label/);
   assert.match(app, /WORKOUT_V2_METRICS/);
   assert.match(app, /Estimated 1RM \(kg\)/);
   // Hover: one hit band per session carrying the numbers, plus the shared tooltip host.
   assert.match(app, /class="chart-hit"/);
+  assert.match(app, /data-tip-sets="\$\{workoutV2Escape\(workoutV2SetList\(point\.sets\)\)\}"/);
+  assert.match(app, /function workoutV2SetList/);
   assert.match(app, /data-tip-rows="\$\{workoutV2Escape\(JSON\.stringify\(rows\)\)\}"/);
   assert.match(app, /function workoutV2HandleChartPointer/);
   assert.match(app, /mount\.addEventListener\("pointermove", workoutV2HandleChartPointer\)/);

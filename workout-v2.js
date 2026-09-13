@@ -936,6 +936,24 @@ function workoutV2AxisLabel(value, step) {
   return workoutV2FormatNumber(value, decimals);
 }
 
+// "80×8 · 85×6 · 85×5" — the session's actual sets, so hover says more than a total.
+function workoutV2SetList(sets) {
+  return (Array.isArray(sets) ? sets : []).map((set) => {
+    const weight = Number(set?.weightKg);
+    const reps = Number(set?.reps);
+    const seconds = Number(set?.seconds);
+    const distance = Number(set?.distanceMeters);
+    const rpe = Number(set?.rpe);
+    if (Number.isFinite(weight) && Number.isFinite(reps)) {
+      return `${workoutV2FormatNumber(weight, 1)}×${reps}${Number.isFinite(rpe) ? `@${workoutV2FormatNumber(rpe, 1)}` : ""}`;
+    }
+    if (Number.isFinite(reps)) return `${reps} reps`;
+    if (Number.isFinite(seconds)) return `${workoutV2FormatNumber(seconds, 0)}s`;
+    if (Number.isFinite(distance)) return `${workoutV2FormatNumber(distance, 0)} m`;
+    return "";
+  }).filter(Boolean).join(" · ");
+}
+
 function workoutV2FormatDuration(seconds) {
   const total = Number(seconds);
   if (!Number.isFinite(total) || total <= 0) return "—";
@@ -1102,7 +1120,13 @@ function workoutV2LineChart(points, metric, label) {
     5,
   );
   const band = Math.max(1e-6, axis.max - axis.min);
-  const x = (index) => left + (valid.length === 1 ? plotWidth / 2 : (index * plotWidth) / (valid.length - 1));
+  // Horizontal position is elapsed time, not session order.
+  const times = valid.map((point) => new Date(`${String(point.dateKey || "").slice(0, 10)}T12:00:00`).getTime());
+  const minTime = Math.min(...times);
+  const maxTime = Math.max(...times);
+  const spanDays = (maxTime - minTime) / 86400000;
+  const xTime = (time) => left + ((time - minTime) / Math.max(1, maxTime - minTime)) * plotWidth;
+  const x = (index) => (valid.length === 1 || maxTime === minTime ? left + plotWidth / 2 : xTime(times[index]));
   const y = (value) => top + ((axis.max - value) * plotHeight) / band;
   const path = valid.map((point, index) => `${index ? "L" : "M"}${x(index).toFixed(1)},${y(point.value).toFixed(1)}`).join(" ");
   const yAxis = axis.ticks.map((tick) => {
@@ -1111,10 +1135,11 @@ function workoutV2LineChart(points, metric, label) {
       + `<line x1="${left - 4}" y1="${tickY}" x2="${left}" y2="${tickY}" class="chart-axis-tick"/>`
       + `<text x="${left - 9}" y="${tickY}" dy="3.5" text-anchor="end" class="chart-tick-label">${workoutV2Escape(workoutV2AxisLabel(tick, axis.step))}</text>`;
   }).join("");
-  const dateAxis = WorkoutCore.pickTickIndexes(valid.length, maxDateTicks).map((index) => {
-    const tickX = x(index).toFixed(1);
+  const longRange = spanDays > 365;
+  const dateAxis = WorkoutCore.timeAxisTicks(valid[0].dateKey, valid[valid.length - 1].dateKey, maxDateTicks).map((tick) => {
+    const tickX = xTime(tick.time).toFixed(1);
     return `<line x1="${tickX}" y1="${height - bottom}" x2="${tickX}" y2="${height - bottom + 5}" class="chart-axis-tick"/>`
-      + `<text x="${tickX}" y="${height - bottom + 17}" text-anchor="middle" class="chart-tick-label">${workoutV2Escape(String(valid[index].dateKey).slice(5))}</text>`;
+      + `<text x="${tickX}" y="${height - bottom + 17}" text-anchor="middle" class="chart-tick-label">${workoutV2Escape(longRange ? tick.dateKey.slice(0, 7) : tick.dateKey.slice(5))}</text>`;
   }).join("");
   // Bands meet at the midpoints between sessions so the whole plot is hoverable
   // (a uniform band width would leave dead strips either side of every point).
@@ -1141,6 +1166,7 @@ function workoutV2LineChart(points, metric, label) {
     return `<rect class="chart-hit" x="${start.toFixed(1)}" y="${top}" width="${Math.max(6, end - start).toFixed(1)}" height="${plotHeight}"`
       + ` data-cx="${cx.toFixed(1)}" data-cy="${cy.toFixed(1)}"`
       + ` data-tip-date="${workoutV2Escape(point.dateKey)}" data-tip-title="${workoutV2Escape(point.workoutName)}"`
+      + ` data-tip-sets="${workoutV2Escape(workoutV2SetList(point.sets))}"`
       + ` data-tip-rows="${workoutV2Escape(JSON.stringify(rows))}"${click}></rect>`;
   }).join("");
   return `<div class="workout-v2-chart"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${workoutV2Escape(label)} · ${valid.length} sessions · ${workoutV2Escape(workoutV2AxisLabel(axis.min, axis.step))} to ${workoutV2Escape(workoutV2AxisLabel(axis.max, axis.step))}">
@@ -1220,8 +1246,9 @@ function workoutV2ShowChartTooltip(hit, clientX, clientY) {
   const rows = workoutV2ChartHitRows(hit);
   tip.innerHTML = `<strong>${workoutV2Escape(hit.dataset.tipDate)}</strong>`
     + (hit.dataset.tipTitle ? `<em>${workoutV2Escape(hit.dataset.tipTitle)}</em>` : "")
+    + (hit.dataset.tipSets ? `<p class="workout-v2-chart-tooltip-sets">${workoutV2Escape(hit.dataset.tipSets)}</p>` : "")
     + `<dl>${rows.map(([rowLabel, rowValue], index) => `<div${index ? "" : ' class="is-primary"'}><dt>${workoutV2Escape(rowLabel)}</dt><dd>${workoutV2Escape(rowValue)}</dd></div>`).join("")}</dl>`
-    + (hit.dataset.tipSession ? "<small>Click to open this session</small>" : "");
+    + (hit.dataset.tipSession ? "<small>Click to open the session</small>" : "");
   tip.hidden = false;
   const box = tip.getBoundingClientRect();
   const margin = 14;

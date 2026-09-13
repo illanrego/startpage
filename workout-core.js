@@ -214,11 +214,22 @@
       let volumeKg = 0;
       let maxWeightKg = null;
       let estimated1rmKg = null;
+      const sets = [];
       matching.forEach((entry) => {
         const weight = nullableNumber(entry.weightKg);
         const reps = nullableNumber(entry.reps);
-        if (weight != null || reps != null || nullableNumber(entry.seconds) != null || nullableNumber(entry.distanceMeters) != null) {
+        const seconds = nullableNumber(entry.seconds);
+        const distanceMeters = nullableNumber(entry.distanceMeters);
+        if (weight != null || reps != null || seconds != null || distanceMeters != null) {
           workingSets += 1;
+          sets.push({
+            setOrder: String(entry.setOrder || ""),
+            weightKg: weight,
+            reps,
+            rpe: nullableNumber(entry.rpe),
+            seconds,
+            distanceMeters,
+          });
         }
         if (weight != null) maxWeightKg = maxWeightKg == null ? weight : Math.max(maxWeightKg, weight);
         if (weight != null && reps != null) volumeKg += weight * reps;
@@ -235,6 +246,7 @@
         volumeKg,
         maxWeightKg,
         estimated1rmKg,
+        sets,
       });
     });
     return Array.from(sessions.values()).sort((a, b) => String(a.startedAt).localeCompare(String(b.startedAt)));
@@ -459,18 +471,27 @@
     return { min: Number(niceLow.toFixed(6)), max: Number(niceHigh.toFixed(6)), step, ticks };
   }
 
-  function pickTickIndexes(count, maxTicks) {
-    const total = Math.max(0, Math.round(Number(count) || 0));
-    if (!total) return [];
-    const limit = Math.max(2, Math.round(Number(maxTicks) || 8));
-    if (total <= limit) return Array.from({ length: total }, (_, index) => index);
-    // One uniform stride, and the newest point only joins in when it continues that
-    // stride exactly — otherwise the last two labels crowd together at the edge.
-    const stride = Math.ceil((total - 1) / (limit - 1));
-    const indexes = [];
-    for (let index = 0; index < total; index += stride) indexes.push(index);
-    if (total - 1 - indexes[indexes.length - 1] === stride) indexes.push(total - 1);
-    return indexes;
+  // Even time steps: equal horizontal distance means equal elapsed time, so a
+  // three-week break reads as a three-week gap instead of one session slot.
+  // Both ends land on real session dates, so the graph stays readable.
+  function timeAxisTicks(fromKey, toKey, count) {
+    const from = new Date(`${String(fromKey || "").slice(0, 10)}T12:00:00`).getTime();
+    const to = new Date(`${String(toKey || "").slice(0, 10)}T12:00:00`).getTime();
+    const limit = Math.max(2, Math.round(Number(count) || 7));
+    if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) {
+      return [{ time: Number.isFinite(from) ? from : 0, dateKey: String(fromKey || "").slice(0, 10) }];
+    }
+    const ticks = [];
+    const seen = new Set();
+    for (let step = 0; step < limit; step += 1) {
+      const time = from + ((to - from) * step) / (limit - 1);
+      const date = new Date(Math.min(to, Math.max(from, Math.round(time))));
+      const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      if (seen.has(dateKey)) continue;
+      seen.add(dateKey);
+      ticks.push({ time, dateKey });
+    }
+    return ticks;
   }
 
   return {
@@ -478,7 +499,7 @@
     computeExerciseProgress,
     computeExerciseSeries,
     niceAxisTicks,
-    pickTickIndexes,
+    timeAxisTicks,
     computeWorkoutSummary,
     createWorkoutDraft,
     exportStrongCsv,

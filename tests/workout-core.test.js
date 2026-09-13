@@ -13,7 +13,7 @@ const {
   inferRoutineCode,
   niceAxisTicks,
   parseStrongCsv,
-  pickTickIndexes,
+  timeAxisTicks,
 } = require("../workout-core.js");
 
 test("parses Strong rows with embedded newlines and unescaped quotes", () => {
@@ -124,6 +124,7 @@ test("builds per-session e1RM, set, load, and volume series", () => {
   assert.equal(series[0].workingSets, 2);
   assert.equal(series[0].maxWeightKg, 85);
   assert.equal(series[0].volumeKg, 1065);
+  assert.deepEqual(series[0].sets.map((set) => [set.weightKg, set.reps]), [[80, 8], [85, 5]]);
   assert.ok(Math.abs(series[0].estimated1rmKg - 101.333333) < 0.001);
   assert.deepEqual(computeWorkoutSummary(data), {
     sessions: 1, rows: 3, workingSets: 2, volumeKg: 1065,
@@ -226,12 +227,14 @@ test("axis ticks land on readable values covering the data range", () => {
   assert.ok(flat.ticks.length >= 2);
 });
 
-test("date ticks stay readable and always keep the newest point", () => {
-  assert.deepEqual(pickTickIndexes(4, 8), [0, 1, 2, 3]);
-  assert.deepEqual(pickTickIndexes(0, 8), []);
-  const many = pickTickIndexes(37, 8);
-  assert.ok(many.length <= 9, `expected a thinned axis, got ${many.length} labels`);
-  assert.equal(many[0], 0);
-  assert.equal(many[many.length - 1], 36);
-  assert.ok(many.every((index, position) => position === 0 || index > many[position - 1]));
+test("date ticks divide the range into equal time steps", () => {
+  const ticks = timeAxisTicks("2026-01-05", "2026-03-02", 7);
+  assert.equal(ticks.length, 7);
+  assert.equal(ticks[0].dateKey, "2026-01-05");
+  assert.equal(ticks[ticks.length - 1].dateKey, "2026-03-02");
+  const gaps = ticks.slice(1).map((tick, index) => tick.time - ticks[index].time);
+  assert.ok(Math.max(...gaps) - Math.min(...gaps) < 1000, `uneven time steps: ${gaps}`);
+  // A single session (or an unusable range) still yields one usable tick.
+  assert.equal(timeAxisTicks("2026-05-01", "2026-05-01", 7).length, 1);
+  assert.equal(timeAxisTicks("2026-05-01", "2026-01-01", 7).length, 1);
 });

@@ -797,6 +797,15 @@
   margin: 0;
 }
 
+.workout-v2-chart-tooltip .workout-v2-chart-tooltip-sets {
+  margin: 0 0 5px;
+  padding: 4px 0;
+  border-top: 1px dotted #b5b5b5;
+  border-bottom: 1px dotted #b5b5b5;
+  color: #111;
+  word-spacing: 1px;
+}
+
 .workout-v2-chart-tooltip dl > div {
   display: flex;
   justify-content: space-between;
