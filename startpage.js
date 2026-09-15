@@ -4975,8 +4975,8 @@ window.onload = function () {
     minHeight: 320,
   });
   makeResizable("plannerContainer", {
-    minWidth: 520,
-    minHeight: 420,
+    minWidth: 420,
+    minHeight: 360,
   });
   makeResizable("workoutContainer", {
     minWidth: 560,
@@ -8437,6 +8437,11 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // PLANNER
+// A light horizon plan: what it is, when it runs, and one note. Lanes,
+// milestones, weekly blocks, sprints and the send-to-today bridge were dropped
+// as unused. Those columns stay dormant in planner_plans; nothing here reads
+// or writes them, and the old content was folded into the note.
+
 const PLANNER_STORAGE_KEY = "plannerState";
 const PLANNER_IMPORT_SCOPE = "planner_v1";
 const plannerRemoteState = {
@@ -8444,127 +8449,20 @@ const plannerRemoteState = {
   plan: null,
 };
 const PLANNER_SELECT_FIELDS =
-  "id, title, starts_on, ends_on, summary, primary_lane, hedge_lane, floor_lane, milestones, weekly_blocks, sprints, review_on, status, created_at, updated_at";
+  "id, title, starts_on, ends_on, summary, status, created_at, updated_at";
 
-function makePlannerLineList(value) {
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => (typeof item === "string" ? item : item?.text || item?.title || ""))
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-  if (typeof value === "string") {
-    return value
-      .split(/\r?\n/)
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-  return [];
-}
-
-function plannerLinesToText(lines) {
-  return makePlannerLineList(lines).join("\n");
-}
-
-function defaultPlannerSprint() {
-  return {
-    title: "Week 1 — set the funnel",
-    startsOn: "2026-08-31",
-    endsOn: "2026-09-07",
-    focus: "Stand up the course funnel (landing + price + Eduzz + pix/support CTA), pick the first content recording, and close a White Castle slice.",
-    planned: [
-      "Course landing live + linked to Eduzz with pix/support CTA",
-      "First Canal do Illan recording topic chosen and recorded",
-      "Close White Castle Phase 1 (process the 4 testando cards)",
-    ],
-    result: "",
-    notes: "",
-    closedAt: "",
-  };
-}
-
-function normalizePlannerSprint(rawSprint) {
-  const fallback = defaultPlannerSprint();
-  const source = rawSprint && typeof rawSprint === "object" ? rawSprint : {};
-  return {
-    title: String(source.title || fallback.title).trim() || fallback.title,
-    startsOn: normalizePlannerDate(source.startsOn || source.starts_on, fallback.startsOn),
-    endsOn: normalizePlannerDate(source.endsOn || source.ends_on, fallback.endsOn),
-    focus: String(source.focus || fallback.focus).trim() || fallback.focus,
-    planned: makePlannerLineList(source.planned).length
-      ? makePlannerLineList(source.planned)
-      : fallback.planned,
-    result: String(source.result || "").trim(),
-    notes: String(source.notes || "").trim(),
-    closedAt: typeof source.closedAt === "string" ? source.closedAt : source.closed_at || "",
-  };
-}
-
-function normalizePlannerSprintLog(value) {
-  return Array.isArray(value)
-    ? value.map(normalizePlannerSprint).filter((sprint) => sprint.closedAt)
-    : [];
-}
-
-function normalizePlannerSprints(value) {
-  const source = value && typeof value === "object" ? value : {};
-  return {
-    activeSprint: normalizePlannerSprint(source.activeSprint || source.active_sprint),
-    sprintLog: normalizePlannerSprintLog(source.sprintLog || source.sprint_log),
-  };
-}
-
-function plannerSprintsToDb(activeSprint, sprintLog) {
-  return {
-    activeSprint: normalizePlannerSprint(activeSprint),
-    sprintLog: normalizePlannerSprintLog(sprintLog),
-  };
-}
-
-function nextPlannerSprintFromClosedSprint(closedSprint) {
-  const base = closedSprint.endsOn || new Date().toISOString().slice(0, 10);
-  const startDate = new Date(`${base}T00:00:00`);
-  const endDate = new Date(`${base}T00:00:00`);
-  if (!Number.isNaN(startDate.getTime())) startDate.setDate(startDate.getDate() + 1);
-  if (!Number.isNaN(endDate.getTime())) endDate.setDate(endDate.getDate() + 7);
-  const nextStart = Number.isNaN(startDate.getTime()) ? "" : startDate.toISOString().slice(0, 10);
-  const nextEnd = Number.isNaN(endDate.getTime()) ? "" : endDate.toISOString().slice(0, 10);
-  return normalizePlannerSprint({
-    ...defaultPlannerSprint(),
-    title: "Next sprint",
-    startsOn: nextStart,
-    endsOn: nextEnd,
-    focus: closedSprint.notes || "Carry forward the most important unfinished outcome.",
-    planned: makePlannerLineList(closedSprint.notes).length
-      ? makePlannerLineList(closedSprint.notes)
-      : ["Pick the next highest-leverage farming-window outcome"],
-    result: "",
-    notes: "",
-    closedAt: "",
-  });
+function plannerTodayKey() {
+  const today = new Date();
+  return trackerDateKey(today.getFullYear(), today.getMonth(), today.getDate());
 }
 
 function defaultPlannerState() {
   return {
     id: "",
-    title: "Farming Window — Sell Existing Course + Content",
-    startsOn: "2026-08-31",
-    endsOn: "2026-10-30",
-    summary:
-      "Sell the EXISTING course (content is too good to re-record). Launch it with the game, drive traffic with Canal do Illan + IG, keep dev warm as portfolio proof, and run legendados + pix/support as the floor. Job-hunt before year-end or immediately if income drops.",
-    primaryLane: "Course (polish price + landing + Eduzz funnel) + content (Canal do Illan / IG / gigs) + game launch. Recording feeds content only.",
-    hedgeLane: "Dev stays warm through Hotseller/White Castle (Phase 1 close, catalogo, PDP) + portfolio-ready proof.",
-    floorLane: "Comics Legendados pipeline + minimal IG/tickets, with pix/support CTA early.",
-    milestones: [
-      { text: "Course landing live + linked to Eduzz with pix/support CTA", done: false },
-      { text: "Game shipped (deploy + smoke test + README)", done: false },
-      { text: "Course + game launched together through the funnel", done: false },
-      { text: "One Canal do Illan / IG output recorded and published per week", done: false },
-      { text: "Farming-window review: job-hunt gate decision", done: false },
-    ],
-    activeSprint: defaultPlannerSprint(),
-    sprintLog: [],
-    reviewOn: "2026-09-07",
+    title: "",
+    startsOn: plannerTodayKey(),
+    endsOn: "",
+    summary: "",
     status: "active",
     updatedAt: new Date().toISOString(),
   };
@@ -8574,51 +8472,28 @@ function normalizePlannerDate(value, fallback) {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : fallback;
 }
 
-function normalizePlannerMilestones(value, fallback) {
-  const list = Array.isArray(value)
-    ? value
-        .map((item) => {
-          const text =
-            typeof item === "string" ? item : item && typeof item === "object" ? item.text : "";
-          const trimmed = String(text || "").trim();
-          if (!trimmed) return null;
-          return {
-            text: trimmed,
-            done: Boolean(item && typeof item === "object" && item.done),
-          };
-        })
-        .filter(Boolean)
-    : [];
-  return list.length ? list : fallback;
-}
-
 function normalizePlannerState(rawState) {
   const fallback = defaultPlannerState();
   const source = rawState && typeof rawState === "object" ? rawState : {};
-  const sprints = normalizePlannerSprints({
-    activeSprint: source.activeSprint || source.active_sprint,
-    sprintLog: source.sprintLog || source.sprint_log,
-    ...(source.sprints && typeof source.sprints === "object" ? source.sprints : {}),
-  });
   return {
     id: typeof source.id === "string" ? source.id : "",
-    title: String(source.title || fallback.title).trim() || fallback.title,
+    title: typeof source.title === "string" ? source.title.trim() : "",
     startsOn: normalizePlannerDate(source.startsOn || source.starts_on, fallback.startsOn),
-    endsOn: normalizePlannerDate(source.endsOn || source.ends_on, fallback.endsOn),
-    summary: String(source.summary || fallback.summary).trim() || fallback.summary,
-    primaryLane: String(source.primaryLane || source.primary_lane || fallback.primaryLane).trim(),
-    hedgeLane: String(source.hedgeLane || source.hedge_lane || fallback.hedgeLane).trim(),
-    floorLane: String(source.floorLane || source.floor_lane || fallback.floorLane).trim(),
-    milestones: normalizePlannerMilestones(source.milestones, fallback.milestones),
-    activeSprint: sprints.activeSprint,
-    sprintLog: sprints.sprintLog,
-    reviewOn: normalizePlannerDate(source.reviewOn || source.review_on, fallback.reviewOn),
+    endsOn: normalizePlannerDate(source.endsOn || source.ends_on, ""),
+    summary: typeof source.summary === "string" ? source.summary : "",
     status: source.status === "archived" ? "archived" : "active",
     updatedAt:
       typeof source.updatedAt === "string" && source.updatedAt
         ? source.updatedAt
         : new Date().toISOString(),
   };
+}
+
+function plannerValidationError(plan) {
+  if (!plan.title) return "A plan needs a title.";
+  if (!plan.startsOn || !plan.endsOn) return "A plan needs a start and an end date.";
+  if (plan.endsOn < plan.startsOn) return "The end date has to be on or after the start.";
+  return "";
 }
 
 function plannerRowToState(row) {
@@ -8628,12 +8503,6 @@ function plannerRowToState(row) {
     startsOn: row.starts_on,
     endsOn: row.ends_on,
     summary: row.summary,
-    primaryLane: row.primary_lane,
-    hedgeLane: row.hedge_lane,
-    floorLane: row.floor_lane,
-    milestones: row.milestones,
-    sprints: row.sprints,
-    reviewOn: row.review_on,
     status: row.status,
     updatedAt: row.updated_at || row.created_at,
   });
@@ -8647,12 +8516,6 @@ function plannerStateToDbPayload(plan, userId) {
     starts_on: normalized.startsOn,
     ends_on: normalized.endsOn,
     summary: normalized.summary,
-    primary_lane: normalized.primaryLane,
-    hedge_lane: normalized.hedgeLane,
-    floor_lane: normalized.floorLane,
-    milestones: normalized.milestones,
-    sprints: plannerSprintsToDb(normalized.activeSprint, normalized.sprintLog),
-    review_on: normalized.reviewOn,
     status: normalized.status,
   };
 }
@@ -8701,21 +8564,6 @@ function readPlannerFormState() {
     startsOn: byId("plannerStartInput")?.value,
     endsOn: byId("plannerEndInput")?.value,
     summary: byId("plannerSummaryInput")?.value,
-    primaryLane: byId("plannerPrimaryInput")?.value,
-    hedgeLane: byId("plannerHedgeInput")?.value,
-    floorLane: byId("plannerFloorInput")?.value,
-    milestones: current.milestones,
-    activeSprint: {
-      title: byId("plannerSprintTitleInput")?.value,
-      startsOn: byId("plannerSprintStartInput")?.value,
-      endsOn: byId("plannerSprintEndInput")?.value,
-      focus: byId("plannerSprintFocusInput")?.value,
-      planned: byId("plannerSprintPlannedInput")?.value,
-      result: byId("plannerSprintResultInput")?.value,
-      notes: byId("plannerSprintNotesInput")?.value,
-      closedAt: "",
-    },
-    reviewOn: byId("plannerReviewInput")?.value,
     updatedAt: new Date().toISOString(),
   });
 }
@@ -8723,122 +8571,6 @@ function readPlannerFormState() {
 function setPlannerSyncStatus(message) {
   const status = document.getElementById("plannerSyncStatus");
   if (status) status.textContent = message;
-}
-
-function renderPlannerSendOptions(plan) {
-  const select = document.getElementById("plannerSendTodaySelect");
-  if (!select) return;
-  select.innerHTML = "";
-  makePlannerLineList(plan.activeSprint.planned).forEach((task, index) => {
-    const option = document.createElement("option");
-    option.value = task;
-    option.textContent = `${index + 1}. ${task}`;
-    select.appendChild(option);
-  });
-}
-
-function createMilestoneElement(milestone, index) {
-  const li = document.createElement("li");
-  li.className = "planner-milestone-item";
-  if (milestone.done) li.classList.add("planner-milestone-item--done");
-
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  checkbox.checked = Boolean(milestone.done);
-  checkbox.setAttribute("aria-label", `Mark milestone done: ${milestone.text}`);
-  checkbox.addEventListener("change", function () {
-    togglePlannerMilestone(index);
-  });
-
-  const label = document.createElement("span");
-  label.textContent = milestone.text;
-
-  const remove = document.createElement("button");
-  remove.type = "button";
-  remove.textContent = "x";
-  remove.setAttribute("aria-label", `Remove milestone: ${milestone.text}`);
-  remove.addEventListener("click", function () {
-    removePlannerMilestone(index);
-  });
-
-  li.appendChild(checkbox);
-  li.appendChild(label);
-  li.appendChild(remove);
-  return li;
-}
-
-function renderPlannerMilestones(plan) {
-  const list = document.getElementById("plannerMilestonesList");
-  if (!list) return;
-  list.innerHTML = "";
-  normalizePlannerMilestones(plan.milestones, []).forEach((milestone, index) => {
-    list.appendChild(createMilestoneElement(milestone, index));
-  });
-}
-
-function addPlannerMilestone() {
-  const input = document.getElementById("plannerMilestoneInput");
-  const plan = getPlannerState();
-  const text = input?.value?.trim();
-  if (!text) return;
-  plan.milestones = [...normalizePlannerMilestones(plan.milestones, []), { text, done: false }];
-  setPlannerState(normalizePlannerState(plan));
-  if (input) input.value = "";
-  renderPlanner();
-  void savePlanner();
-}
-
-function togglePlannerMilestone(index) {
-  const plan = getPlannerState();
-  const milestones = normalizePlannerMilestones(plan.milestones, []);
-  const milestone = milestones[index];
-  if (!milestone) return;
-  milestones[index] = { ...milestone, done: !milestone.done };
-  plan.milestones = milestones;
-  setPlannerState(normalizePlannerState(plan));
-  renderPlanner();
-  void savePlanner();
-}
-
-function removePlannerMilestone(index) {
-  const plan = getPlannerState();
-  plan.milestones = normalizePlannerMilestones(plan.milestones, []).filter(
-    (_m, i) => i !== index,
-  );
-  setPlannerState(normalizePlannerState(plan));
-  renderPlanner();
-  void savePlanner();
-}
-
-function renderPlannerSprintLog(plan) {
-  const list = document.getElementById("plannerSprintLog");
-  if (!list) return;
-  list.innerHTML = "";
-  const sprintLog = normalizePlannerSprintLog(plan.sprintLog);
-  if (sprintLog.length === 0) {
-    const empty = document.createElement("li");
-    empty.className = "planner-sprint-log-item planner-sprint-log-item--empty";
-    empty.textContent = "No closed sprints yet.";
-    list.appendChild(empty);
-    return;
-  }
-  sprintLog
-    .slice()
-    .reverse()
-    .forEach((sprint) => {
-      const item = document.createElement("li");
-      item.className = "planner-sprint-log-item";
-      const title = document.createElement("strong");
-      title.textContent = `${sprint.title} (${sprint.startsOn} → ${sprint.endsOn})`;
-      const result = document.createElement("p");
-      result.textContent = sprint.result || "No result note.";
-      const notes = document.createElement("small");
-      notes.textContent = sprint.notes ? `Carry-over: ${sprint.notes}` : "No carry-over.";
-      item.appendChild(title);
-      item.appendChild(result);
-      item.appendChild(notes);
-      list.appendChild(item);
-    });
 }
 
 function renderPlanner() {
@@ -8850,21 +8582,7 @@ function renderPlanner() {
   assign("plannerTitleInput", plan.title);
   assign("plannerStartInput", plan.startsOn);
   assign("plannerEndInput", plan.endsOn);
-  assign("plannerReviewInput", plan.reviewOn);
   assign("plannerSummaryInput", plan.summary);
-  assign("plannerPrimaryInput", plan.primaryLane);
-  assign("plannerHedgeInput", plan.hedgeLane);
-  assign("plannerFloorInput", plan.floorLane);
-  assign("plannerSprintTitleInput", plan.activeSprint.title);
-  assign("plannerSprintStartInput", plan.activeSprint.startsOn);
-  assign("plannerSprintEndInput", plan.activeSprint.endsOn);
-  assign("plannerSprintFocusInput", plan.activeSprint.focus);
-  assign("plannerSprintPlannedInput", plannerLinesToText(plan.activeSprint.planned));
-  assign("plannerSprintResultInput", plan.activeSprint.result);
-  assign("plannerSprintNotesInput", plan.activeSprint.notes);
-  renderPlannerMilestones(plan);
-  renderPlannerSendOptions(plan);
-  renderPlannerSprintLog(plan);
 }
 
 async function loadPlannerBackendState() {
@@ -8910,12 +8628,16 @@ async function importPlannerLocalDataOnce() {
   if (hasBackendImportCompleted(PLANNER_IMPORT_SCOPE)) return;
   const userId = getBackendUserId();
   if (!backendState.client || !userId) return;
-  const localPlan = getLocalPlannerState();
+  const plan = getLocalPlannerState();
+  if (plannerValidationError(plan)) {
+    markBackendImportCompleted(PLANNER_IMPORT_SCOPE);
+    return;
+  }
   try {
     throwIfSupabaseError(
       await backendState.client
         .from("planner_plans")
-        .upsert(plannerStateToDbPayload(localPlan, userId), { onConflict: "user_id,status" })
+        .upsert(plannerStateToDbPayload(plan, userId), { onConflict: "user_id,status" })
         .select("id")
         .single(),
     );
@@ -8929,6 +8651,12 @@ async function importPlannerLocalDataOnce() {
 
 async function savePlanner() {
   const plan = readPlannerFormState();
+  const invalid = plannerValidationError(plan);
+  if (invalid) {
+    setPlannerSyncStatus(invalid);
+    return;
+  }
+
   if (isPlannerBackendActive()) {
     try {
       const userId = getBackendUserId();
@@ -8946,51 +8674,18 @@ async function savePlanner() {
           .single(),
       );
       plannerRemoteState.plan = plannerRowToState(row);
-      setPlannerSyncStatus("Saved to backend.");
+      setPlannerSyncStatus("Saved.");
     } catch (error) {
       console.error("Planner DB save error:", error);
       setLocalPlannerState(plan);
       plannerRemoteState.plan = plan;
-      setPlannerSyncStatus(`Backend save failed; saved locally: ${describeBackendError(error)}`);
+      setPlannerSyncStatus(`Save failed; kept locally: ${describeBackendError(error)}`);
     }
   } else {
     setLocalPlannerState(plan);
     setPlannerSyncStatus("Saved locally.");
   }
   renderPlanner();
-}
-
-async function closePlannerSprint() {
-  const plan = readPlannerFormState();
-  const closedSprint = normalizePlannerSprint({
-    ...plan.activeSprint,
-    result: plan.activeSprint.result || "Closed without a result note.",
-    closedAt: new Date().toISOString(),
-  });
-  const nextPlan = normalizePlannerState({
-    ...plan,
-    sprintLog: [...normalizePlannerSprintLog(plan.sprintLog), closedSprint],
-    activeSprint: nextPlannerSprintFromClosedSprint(closedSprint),
-    updatedAt: new Date().toISOString(),
-  });
-  setPlannerState(nextPlan);
-  renderPlanner();
-  setPlannerSyncStatus("Sprint closed into log. Review/edit the next sprint, then save.");
-  if (isPlannerBackendActive()) {
-    await savePlanner();
-  } else {
-    setLocalPlannerState(nextPlan);
-  }
-}
-
-function sendPlannerBlockToToday() {
-  const select = document.getElementById("plannerSendTodaySelect");
-  const taskInput = document.getElementById("taskInput");
-  const text = select?.value?.trim();
-  if (!text || !taskInput) return;
-  taskInput.value = text;
-  hideQuadro("todoContainer");
-  setPlannerSyncStatus("Copied block into To-do input. Press + to create it.");
 }
 
 document.addEventListener("DOMContentLoaded", function () {
