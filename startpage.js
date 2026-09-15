@@ -6456,10 +6456,24 @@ function buildNoteSection(section) {
   const header = document.createElement("div");
   header.className = "note-section-header";
 
-  const title = document.createElement("span");
-  title.className = "note-section-title";
-  title.textContent = section.title;
-  header.appendChild(title);
+  if (section.editing) {
+    const titleInput = document.createElement("input");
+    titleInput.type = "text";
+    titleInput.className = "note-section-title-input";
+    titleInput.value = section.title;
+    titleInput.setAttribute("aria-label", "Section title");
+    titleInput.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      saveNoteSectionFrom(wrapper, section);
+    });
+    header.appendChild(titleInput);
+  } else {
+    const title = document.createElement("span");
+    title.className = "note-section-title";
+    title.textContent = section.title;
+    header.appendChild(title);
+  }
 
   const actions = document.createElement("div");
   actions.className = "note-section-actions";
@@ -6469,8 +6483,7 @@ function buildNoteSection(section) {
     saveButton.type = "button";
     saveButton.textContent = "save";
     saveButton.addEventListener("click", function () {
-      const area = wrapper.querySelector("textarea");
-      void saveNoteSection(section.id, area ? area.value : section.body);
+      saveNoteSectionFrom(wrapper, section);
     });
 
     const cancelButton = document.createElement("button");
@@ -6534,7 +6547,16 @@ function renderNotes() {
   sections.forEach((section) => host.appendChild(buildNoteSection(section)));
 }
 
-async function saveNoteSection(sectionId, body) {
+function saveNoteSectionFrom(wrapper, section) {
+  const titleInput = wrapper.querySelector(".note-section-title-input");
+  const area = wrapper.querySelector("textarea");
+  void saveNoteSection(section.id, {
+    title: titleInput ? titleInput.value : section.title,
+    body: area ? area.value : section.body,
+  });
+}
+
+async function saveNoteSection(sectionId, patch) {
   const section = getNoteSections().find((candidate) => candidate.id === sectionId);
   if (!section) return;
 
@@ -6544,23 +6566,33 @@ async function saveNoteSection(sectionId, body) {
     return;
   }
 
-  const nextBody = typeof body === "string" ? body : "";
+  const raw = patch && typeof patch === "object" ? patch : {};
+  const nextTitle =
+    typeof NotesCore === "object" && NotesCore
+      ? NotesCore.normalizeNoteTitle(raw.title)
+      : String(raw.title || "").trim();
+  if (!nextTitle) {
+    setNotesStatus("A section needs a title.");
+    return;
+  }
+  const nextBody = typeof raw.body === "string" ? raw.body : section.body;
 
   try {
     throwIfSupabaseError(
       await backendState.client
         .from("notes_sections")
-        .update({ body: nextBody })
+        .update({ title: nextTitle, body: nextBody })
         .eq("id", sectionId)
         .eq("user_id", userId),
     );
+    section.title = nextTitle;
     section.body = nextBody;
     section.editing = false;
     renderNotes();
-    setNotesStatus(`Saved "${section.title}".`);
+    setNotesStatus(`Saved "${nextTitle}".`);
   } catch (error) {
     console.error("Notes save error:", error);
-    setNotesStatus(`Could not save "${section.title}": ${describeBackendError(error)}`);
+    setNotesStatus(`Could not save "${nextTitle}": ${describeBackendError(error)}`);
   }
 }
 

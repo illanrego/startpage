@@ -66,6 +66,25 @@ test("Empty body parses to nothing", () => {
   assert.equal(NotesCore.noteBodyLineCount("\n \n"), 0);
 });
 
+test("A section title is trimmed, and blank is rejected", () => {
+  assert.equal(NotesCore.normalizeNoteTitle("  Vagas  "), "Vagas");
+  assert.equal(NotesCore.normalizeNoteTitle("Curso do Comic"), "Curso do Comic");
+  assert.equal(NotesCore.normalizeNoteTitle(""), "");
+  assert.equal(NotesCore.normalizeNoteTitle("   "), "");
+  assert.equal(NotesCore.normalizeNoteTitle(null), "");
+  assert.equal(NotesCore.normalizeNoteTitle(undefined), "");
+});
+
+test("Section titles are editable alongside the body, on a fixed slug", () => {
+  const app = fs.readFileSync(path.join(root, "startpage.js"), "utf8");
+
+  assert.match(app, /note-section-title-input/);
+  assert.match(app, /normalizeNoteTitle/);
+  // The save writes both fields; the slug is never part of the update payload.
+  assert.match(app, /\.update\(\{ title: nextTitle, body: nextBody \}\)/);
+  assert.doesNotMatch(app, /\.update\(\{[^}]*slug/);
+});
+
 test("Notes window is wired into the shell, not a standalone page", () => {
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
   const app = fs.readFileSync(path.join(root, "startpage.js"), "utf8");

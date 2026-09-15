@@ -1314,6 +1314,19 @@ display: flex;
   font-size: 13px;
 }
 
+.note-section-title-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 2px inset #fff;
+  background: #fff;
+  color: #000;
+  font-family: "win98", sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+  padding: 2px 4px;
+}
+
 .note-section-body {
   margin: 6px;
   padding: 8px;

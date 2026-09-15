@@ -79,10 +79,18 @@
       .filter((line) => line.trim()).length;
   }
 
+  // The slug is the stable key and never changes; only this title is editable.
+  // Mirrors the notes_sections_title_not_blank constraint so a blank title is
+  // rejected in the UI instead of by the database.
+  function normalizeNoteTitle(value) {
+    return typeof value === "string" ? value.trim() : "";
+  }
+
   return {
     extractFirstUrl,
     isUrlOnlyLine,
     parseNoteBody,
     noteBodyLineCount,
+    normalizeNoteTitle,
   };
 });
