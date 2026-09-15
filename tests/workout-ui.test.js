@@ -74,7 +74,7 @@ test("Workout window is stretchable like the other feature windows", () => {
   const app = fs.readFileSync(path.join(root, "workout-v2.js"), "utf8");
 
   assert.match(shell, /makeResizable\("workoutContainer", \{\s*minWidth: 560,\s*minHeight: 420,\s*onResize: scheduleWorkoutV2ChartRender,/);
-  assert.match(shell, /flexQuadros = \["chatContainer", "workoutContainer"\]/);
+  assert.match(shell, /flexQuadros = \["chatContainer", "workoutContainer", "notesContainer"\]/);
   assert.match(app, /function scheduleWorkoutV2ChartRender\(\)/);
   assert.match(css, /#workoutContainer \{[^}]*overflow: hidden;/);
   // The scroll area is a flex child, so the panel can never be clipped mid-content.

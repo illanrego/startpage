@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>illan's hub</title>
-    <link rel="stylesheet" href="startpage.css?v=20260913-range-axis" />
+    <link rel="stylesheet" href="startpage.css?v=20260915-notes-window" />
     <link rel="stylesheet" href="workout-v2.css?v=20260913-range-axis" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400&display=swap">
     <link rel="stylesheet" href="win98.ttf">
@@ -12,7 +12,8 @@
     <script src="config.js?v=20260624-cloud-worker"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="workout-core.js?v=20260913-chart-time-axis" defer></script>
-    <script src="startpage.js?v=20260913-range-axis" defer></script>
+    <script src="notes-core.js?v=20260915-notes-window" defer></script>
+    <script src="startpage.js?v=20260915-notes-window" defer></script>
     <script src="workout-v2.js?v=20260913-range-axis" defer></script>
   </head>
   <body>
@@ -68,6 +69,10 @@
   <div class="icon" id="ideasIconDiv" onclick="hideQuadro('ideasContainer')">
      <img src="./imagens/98icons/w98_notepad.ico" width="60">
      <label>Ideas</label>
+  </div>
+  <div class="icon" id="notesIconDiv" onclick="hideQuadro('notesContainer')">
+     <img src="./imagens/98icons/w98_note.ico" width="60">
+     <label>Notes</label>
   </div>
   <div class="icon" id="plannerIconDiv" onclick="hideQuadro('plannerContainer')">
      <img src="./imagens/98icons/w98_notepad_file.ico" width="60">
@@ -168,6 +173,18 @@
 	                  <meter id="meditationMeter" min="0" max="7" low="2" high="6" value="0"></meter>
 	              </div>
           </div>
+        <div class="skillBox gamify-skill-card" data-skill="jobhunting" role="button" tabindex="0" aria-pressed="false">
+              <div class="skillDetails">
+                  <div class="skillInfo">
+			      <label for="jobhunting">Job Hunting</label>
+                <img src="./imagens/98icons/w98_certificate.ico" width="50" height="55"/>
+                  </div>
+<span class="infoRight"><p>lvl:<span id="lvl6">0</span> total:<span id="jobhuntingTotalCount">0</span>
+		today:<span id="dailyCountjobhunting">0</span>
+</p></span>
+	                  <meter id="jobhuntingMeter" min="0" max="7" low="2" high="6" value="0"></meter>
+	              </div>
+          </div>
         </div>
         </div>
 	</div>
@@ -179,12 +196,8 @@
 	          <button onclick="hideQuadro('dailiesContainer')">x</button>
 	           </div>
       <div id="dailiesWindowBody">
-        <div id="habiticaSyncSection">
-          <div id="habiticaSyncToolbar">
-            <span>Dailies</span>
-            <button id="habiticaSyncBtn" type="button">Habitica sync</button>
-          </div>
-          <p id="habiticaSyncStatus">Not synced yet.</p>
+        <div id="dailiesStatusSection">
+          <p id="dailiesStatus">Ready.</p>
           <div id="tasklistContainer">
             <ul id="dailiesList"></ul>
           </div>
@@ -198,6 +211,7 @@
                   <option value="content">Content</option>
                   <option value="standup">Stand Up</option>
                   <option value="meditation">Meditation</option>
+                  <option value="jobhunting">Job Hunting</option>
                 </select>
 	        		<button onclick="addDaily()">+</button>
 			  </div>
@@ -213,9 +227,8 @@
           <div id="todoToolbar">
             <input type="text" id="taskInput" placeholder="Add task">
             <button id="todoAddBtn" onclick="addTask()">+</button>
-            <button id="todoSyncBtn" type="button">Habitica sync</button>
           </div>
-          <p id="todoSyncStatus">Ready.</p>
+          <p id="todoStatus">Ready.</p>
           <ul id="taskList"></ul>
         </div>
       </div>
@@ -343,6 +356,17 @@
           </div>
         </div>
         <p id="ideasSyncStatus" class="ideas-sync-status"></p>
+      </div>
+<!-- NOTES -->
+      <div class="quadros" id="notesContainer" style="display: none">
+        <div class="titleBar">
+          <h2>Notes</h2>
+          <button onclick="hideQuadro('notesContainer')">x</button>
+        </div>
+        <div id="notesPanel">
+          <p id="notesStatus">Ready.</p>
+          <div id="notesSections"></div>
+        </div>
       </div>
 <!-- WORKOUT -->
     <div id="workoutContainer" class="quadros" style="display: none">
@@ -831,6 +855,7 @@
             <li onclick="hideQuadro('chatContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_message_file.ico" width="35" height="35">Chat Assistant</li>
             <li onclick="hideQuadro('financeContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_calculator.ico" width="35" height="35">Finance Log</li>
             <li onclick="hideQuadro('ideasContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_notepad.ico" width="35" height="35">Ideas</li>
+            <li onclick="hideQuadro('notesContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_note.ico" width="35" height="35">Notes</li>
             <li onclick="hideQuadro('plannerContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_notepad_file.ico" width="35" height="35">Planner</li>
             <li onclick="hideQuadro('connectionsContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_web_file.ico" width="35" height="35">Connections</li>
             <li onclick="hideQuadro('llmUsageContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_chip_ramdrive.ico" width="35" height="35">LLM Usage</li>

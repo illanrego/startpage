@@ -209,7 +209,6 @@ function getWeekNumber(date) {
 
 const LOCAL_TASKS_STORAGE_KEY = "tasks";
 const LOCAL_DAILIES_STORAGE_KEY = "dailiesList";
-const LOCAL_TASK_SOURCE_HABITICA = "habitica";
 const TASK_IMPORT_SCOPE = "tasks_v1";
 const TASK_TYPE_TODO = "todo";
 const TASK_TYPE_DAILY = "daily";
@@ -219,8 +218,8 @@ const taskRemoteState = {
   dailies: [],
 };
 
-function setTodoSyncStatus(message) {
-  const status = document.getElementById("todoSyncStatus");
+function setTodoStatus(message) {
+  const status = document.getElementById("todoStatus");
   if (!status) return;
   status.textContent = message;
 }
@@ -250,7 +249,6 @@ function normalizeLocalTaskEntry(task) {
     return {
       id: makeLocalTaskId(),
       text,
-      habiticaTaskId: "",
       source: "local",
     };
   }
@@ -262,9 +260,7 @@ function normalizeLocalTaskEntry(task) {
   return {
     id: typeof task.id === "string" && task.id.trim() ? task.id : makeLocalTaskId(),
     text,
-    habiticaTaskId:
-      typeof task.habiticaTaskId === "string" ? task.habiticaTaskId.trim() : "",
-    source: task.source === LOCAL_TASK_SOURCE_HABITICA ? LOCAL_TASK_SOURCE_HABITICA : "local",
+    source: "local",
     createdAt:
       typeof task.createdAt === "string" && task.createdAt
         ? task.createdAt
@@ -279,11 +275,10 @@ function normalizeLocalDailyEntry(daily) {
     return {
       id: makeLocalTaskId(),
       text,
-      habiticaTaskId: "",
       source: "local",
       skillCode: "",
       sortOrder: 0,
-      completedToday: false,
+      dailyDoneOn: "",
       createdAt: new Date().toISOString(),
     };
   }
@@ -294,12 +289,10 @@ function normalizeLocalDailyEntry(daily) {
   return {
     id: typeof daily.id === "string" && daily.id.trim() ? daily.id : makeLocalTaskId(),
     text,
-    habiticaTaskId:
-      typeof daily.habiticaTaskId === "string" ? daily.habiticaTaskId.trim() : "",
-    source: daily.source === LOCAL_TASK_SOURCE_HABITICA ? LOCAL_TASK_SOURCE_HABITICA : "local",
+    source: "local",
     skillCode: normalizeDailySkillCode(daily.skillCode),
     sortOrder: normalizeTaskSortOrder(daily.sortOrder),
-    completedToday: Boolean(daily.completedToday),
+    dailyDoneOn: typeof daily.dailyDoneOn === "string" ? daily.dailyDoneOn.trim() : "",
     createdAt:
       typeof daily.createdAt === "string" && daily.createdAt
         ? daily.createdAt
@@ -406,50 +399,23 @@ function getNextDailySortOrder(dailies = getDailyTasks()) {
   ) + 1;
 }
 
-function mapTaskRowToTodo(row, habiticaTaskId = "") {
+function mapTaskRowToTodo(row) {
   return normalizeLocalTaskEntry({
     id: row.id,
     text: row.text,
-    habiticaTaskId,
-    source: habiticaTaskId ? LOCAL_TASK_SOURCE_HABITICA : row.source,
     createdAt: row.created_at,
   });
 }
 
-function mapTaskRowToDaily(row, habiticaTaskId = "", completedToday = false) {
+function mapTaskRowToDaily(row) {
   return normalizeLocalDailyEntry({
     id: row.id,
     text: row.text,
-    habiticaTaskId,
-    source: habiticaTaskId ? LOCAL_TASK_SOURCE_HABITICA : row.source,
     skillCode: row.skill_code,
     sortOrder: row.sort_order,
-    completedToday,
+    dailyDoneOn: row.daily_done_on || "",
     createdAt: row.created_at,
   });
-}
-
-async function upsertTaskExternalLink(
-  taskId,
-  habiticaTaskId,
-  externalStatus = "pending",
-  externalType = "todo",
-) {
-  const userId = getBackendUserId();
-  if (!backendState.client || !userId || !taskId || !habiticaTaskId) return;
-  throwIfSupabaseError(
-    await backendState.client.from("task_external_links").upsert(
-      {
-        user_id: userId,
-        task_id: taskId,
-        provider: "habitica",
-        external_task_id: habiticaTaskId,
-        external_type: externalType,
-        external_status: externalStatus,
-      },
-      { onConflict: "user_id,provider,external_task_id" },
-    ),
-  );
 }
 
 async function createBackendTask(task) {
@@ -507,7 +473,7 @@ async function loadTaskBackendState() {
   const taskRows = throwIfSupabaseError(
     await backendState.client
       .from("tasks")
-      .select("id, text, task_type, source, skill_code, sort_order, created_at")
+      .select("id, text, task_type, source, skill_code, sort_order, daily_done_on, created_at")
       .eq("user_id", userId)
       .is("completed_at", null)
       .in("task_type", [TASK_TYPE_TODO, TASK_TYPE_DAILY])
@@ -515,27 +481,13 @@ async function loadTaskBackendState() {
       .order("created_at", { ascending: true }),
   );
 
-  const ids = (taskRows || []).map((row) => row.id);
-  let linkRows = [];
-  if (ids.length > 0) {
-    linkRows = throwIfSupabaseError(
-      await backendState.client
-        .from("task_external_links")
-        .select("task_id, external_task_id")
-        .eq("user_id", userId)
-        .eq("provider", "habitica")
-        .in("task_id", ids),
-    );
-  }
-  const linkMap = new Map((linkRows || []).map((link) => [link.task_id, link.external_task_id]));
-
   taskRemoteState.todos = (taskRows || [])
     .filter((row) => row.task_type === TASK_TYPE_TODO)
-    .map((row) => mapTaskRowToTodo(row, linkMap.get(row.id) || ""))
+    .map((row) => mapTaskRowToTodo(row))
     .filter(Boolean);
   taskRemoteState.dailies = (taskRows || [])
     .filter((row) => row.task_type === TASK_TYPE_DAILY)
-    .map((row) => mapTaskRowToDaily(row, linkMap.get(row.id) || ""))
+    .map((row) => mapTaskRowToDaily(row))
     .filter(Boolean);
   taskRemoteState.loaded = true;
 }
@@ -558,9 +510,9 @@ async function importTaskLocalDataOnce() {
     return;
   }
 
-  setTodoSyncStatus("Importing local todos/dailies...");
+  setTodoStatus("Importing local todos/dailies...");
   for (const task of localTasks) {
-    const row = throwIfSupabaseError(
+    throwIfSupabaseError(
       await backendState.client
         .from("tasks")
         .upsert(
@@ -569,7 +521,7 @@ async function importTaskLocalDataOnce() {
             legacy_id: task.id,
             text: task.text,
             task_type: TASK_TYPE_TODO,
-            source: task.habiticaTaskId ? LOCAL_TASK_SOURCE_HABITICA : task.source,
+            source: "local",
             created_at: financeTimestampForDb(task.createdAt),
           },
           { onConflict: "user_id,legacy_id" },
@@ -577,9 +529,6 @@ async function importTaskLocalDataOnce() {
         .select("id")
         .single(),
     );
-    if (task.habiticaTaskId) {
-      await upsertTaskExternalLink(row.id, task.habiticaTaskId);
-    }
   }
 
   for (const daily of localDailies) {
@@ -590,7 +539,7 @@ async function importTaskLocalDataOnce() {
           legacy_id: daily.id,
           text: daily.text,
           task_type: TASK_TYPE_DAILY,
-          source: daily.habiticaTaskId ? LOCAL_TASK_SOURCE_HABITICA : daily.source || "local",
+          source: "local",
           skill_code: daily.skillCode || null,
           sort_order: normalizeTaskSortOrder(daily.sortOrder),
           created_at: financeTimestampForDb(daily.createdAt),
@@ -598,17 +547,6 @@ async function importTaskLocalDataOnce() {
         { onConflict: "user_id,legacy_id" },
       ),
     );
-    if (daily.habiticaTaskId) {
-      const row = throwIfSupabaseError(
-        await backendState.client
-          .from("tasks")
-          .select("id")
-          .eq("user_id", userId)
-          .eq("legacy_id", daily.id)
-          .single(),
-      );
-      await upsertTaskExternalLink(row.id, daily.habiticaTaskId, "pending", "daily");
-    }
   }
 
   markBackendImportCompleted(TASK_IMPORT_SCOPE);
@@ -618,27 +556,15 @@ async function removeTask(taskId) {
   const task = getTasks().find((item) => item.id === taskId);
   if (!task) return;
 
-  // If the task came from Habitica, delete it there first (source of truth)
-  if (task.habiticaTaskId) {
-    try {
-      setTodoSyncStatus(`Deleting "${task.text}" from Habitica...`);
-      await deleteHabiticaTodoTask(task.habiticaTaskId);
-      setTodoSyncStatus(`Deleted "${task.text}" from Habitica.`);
-    } catch (error) {
-      console.error("Habitica todo delete error:", error);
-      setTodoSyncStatus(`Failed to delete "${task.text}" from Habitica: ${error instanceof Error ? error.message : String(error)}`);
-      return;
-    }
-  }
-
   if (isTaskBackendActive()) {
     try {
       await deleteBackendTask(taskId);
       taskRemoteState.todos = taskRemoteState.todos.filter((item) => item.id !== taskId);
       renderTaskList();
+      setTodoStatus(`Removed "${task.text}".`);
     } catch (error) {
       console.error("Todo delete error:", error);
-      setTodoSyncStatus(`Delete failed: ${describeBackendError(error)}`);
+      setTodoStatus(`Delete failed: ${describeBackendError(error)}`);
     }
     return;
   }
@@ -646,6 +572,7 @@ async function removeTask(taskId) {
   const tasks = getLocalTaskList().filter((item) => item.id !== taskId);
   setLocalTaskList(tasks);
   renderTaskList();
+  setTodoStatus(`Removed "${task.text}".`);
 }
 
 function renderTaskList() {
@@ -667,13 +594,6 @@ function renderTaskList() {
     text.textContent = task.text;
     main.appendChild(text);
 
-    if (task.habiticaTaskId) {
-      const badge = document.createElement("span");
-      badge.className = "todo-task-badge";
-      badge.textContent = "Habitica";
-      main.appendChild(badge);
-    }
-
     const actions = document.createElement("div");
     actions.className = "todo-task-actions";
 
@@ -691,7 +611,6 @@ function renderTaskList() {
     deleteButton.textContent = "x";
     deleteButton.onclick = function () {
       void removeTask(task.id);
-      setTodoSyncStatus(`Removed "${task.text}".`);
     };
 
     actions.appendChild(doneButton);
@@ -709,30 +628,6 @@ async function completeTask(taskId, buttonEl) {
   if (buttonEl) buttonEl.disabled = true;
 
   try {
-    if (task.habiticaTaskId) {
-      setTodoSyncStatus(`Completing "${task.text}" on Habitica...`);
-      await markHabiticaTaskDone(task.habiticaTaskId);
-      setTodoSyncStatus(`Habitica done. Updating storage for "${task.text}"...`);
-      if (isTaskBackendActive()) {
-        try {
-          await updateBackendTask(taskId, { completed_at: new Date().toISOString() });
-        } catch (storageError) {
-          console.error("Todo DB completion error:", storageError);
-          setTodoSyncStatus(
-            `Habitica done, but DB update failed: ${describeBackendError(storageError)}`,
-          );
-        }
-        taskRemoteState.todos = taskRemoteState.todos.filter((item) => item.id !== taskId);
-        renderTaskList();
-      } else {
-        const tasks = getLocalTaskList().filter((item) => item.id !== taskId);
-        setLocalTaskList(tasks);
-        renderTaskList();
-      }
-      setTodoSyncStatus(`Done: "${task.text}" completed on Habitica.`);
-      return;
-    }
-
     if (isTaskBackendActive()) {
       try {
         await updateBackendTask(taskId, { completed_at: new Date().toISOString() });
@@ -740,7 +635,7 @@ async function completeTask(taskId, buttonEl) {
         renderTaskList();
       } catch (storageError) {
         console.error("Todo DB completion error:", storageError);
-        setTodoSyncStatus(`DB completion failed: ${describeBackendError(storageError)}`);
+        setTodoStatus(`DB completion failed: ${describeBackendError(storageError)}`);
         if (buttonEl) buttonEl.disabled = false;
         return;
       }
@@ -749,10 +644,10 @@ async function completeTask(taskId, buttonEl) {
       setLocalTaskList(tasks);
       renderTaskList();
     }
-    setTodoSyncStatus(`Done: "${task.text}" completed locally.`);
+    setTodoStatus(`Done: "${task.text}".`);
   } catch (error) {
     console.error("Todo completion error:", error);
-    setTodoSyncStatus(`Habitica completion failed for "${task.text}".`);
+    setTodoStatus(`Completion failed for "${task.text}".`);
     if (buttonEl) buttonEl.disabled = false;
   }
 }
@@ -764,28 +659,10 @@ async function addTask() {
   const text = taskInput.value.trim();
   if (!text) return;
 
-  let habiticaTaskId = "";
-  let habiticaError = null;
-
-  // Habitica is the source of truth - create todo there first
-  try {
-    setTodoSyncStatus(`Creating "${text}" on Habitica...`);
-    const created = await createHabiticaTodoTask(text);
-    if (created && typeof created.id === "string" && created.id) {
-      habiticaTaskId = created.id;
-    } else {
-      habiticaError = new Error("Habitica did not return a task id");
-    }
-  } catch (error) {
-    console.error("Habitica todo creation error:", error);
-    habiticaError = error;
-  }
-
   const task = {
     id: makeLocalTaskId(),
     text,
-    habiticaTaskId,
-    source: habiticaTaskId ? LOCAL_TASK_SOURCE_HABITICA : "local",
+    source: "local",
     createdAt: new Date().toISOString(),
   };
 
@@ -799,17 +676,10 @@ async function addTask() {
       });
       task.id = row.id;
       task.createdAt = row.created_at;
-      if (habiticaTaskId) {
-        await upsertTaskExternalLink(row.id, habiticaTaskId);
-      }
       taskRemoteState.todos.push(task);
       renderTaskList();
       taskInput.value = "";
-      setTodoSyncStatus(
-        habiticaTaskId
-          ? `Habitica todo created and saved to DB: "${text}".`
-          : `Habitica unavailable; saved to DB: "${text}".`,
-      );
+      setTodoStatus(`Saved "${text}".`);
       return;
     } catch (error) {
       console.error("Todo DB save error:", error);
@@ -820,11 +690,7 @@ async function addTask() {
       }
       renderTaskList();
       taskInput.value = "";
-      setTodoSyncStatus(
-        habiticaTaskId
-          ? `Habitica todo created, DB failed; saved locally: "${text}".`
-          : `Habitica and DB failed; saved locally: "${text}".`,
-      );
+      setTodoStatus(`DB failed, saved locally: "${text}".`);
       return;
     }
   }
@@ -834,43 +700,18 @@ async function addTask() {
   if (savedTask) {
     renderTaskList();
     taskInput.value = "";
-    setTodoSyncStatus(
-      habiticaTaskId
-        ? `Habitica todo created and saved locally: "${text}".`
-        : `Habitica unavailable; saved locally: "${text}".`,
-    );
-    if (habiticaError) console.debug("Habitica fallback reason:", habiticaError);
+    setTodoStatus(`Saved locally: "${text}".`);
   }
 }
 
 document.addEventListener("DOMContentLoaded", function () {
   renderTaskList();
-  setTodoSyncStatus("Ready. Open this window to sync cloud tasks; use Habitica sync when needed.");
+  setTodoStatus("Ready.");
 
   const taskInput = document.getElementById("taskInput");
   if (taskInput) {
     taskInput.addEventListener("keydown", function (event) {
       if (event.key === "Enter") addTask();
-    });
-  }
-
-  const syncButton = document.getElementById("todoSyncBtn");
-  if (syncButton) {
-    syncButton.addEventListener("click", async function () {
-      syncButton.disabled = true;
-      setTodoSyncStatus("Syncing todos...");
-      try {
-        const result = await syncHabiticaTodosToLocalTaskList();
-        if (result) {
-          setTodoSyncStatus(
-            `Synced ${result.pending} pending (added ${result.added}, removed ${result.removed}).`,
-          );
-        }
-      } catch (_error) {
-        setTodoSyncStatus("Sync failed. Check Wrangler proxy.");
-      } finally {
-        syncButton.disabled = false;
-      }
     });
   }
 });
@@ -978,31 +819,7 @@ function buildConnectionRows() {
     },
   ];
 
-  const habitica = integrationRemoteState.integrations.habitica;
-  const habiticaMeta = habitica?.metadata || {};
   const workerAuthConfigured = hasWorkerAuthSession();
-  const habiticaDisabledReason = !workerAuthConfigured
-    ? "Sign in to Supabase first"
-    : habiticaMeta.lastError
-      ? String(habiticaMeta.lastError)
-      : "Worker authorization unavailable";
-  const habiticaErrorReason = habiticaMeta.lastError
-    ? String(habiticaMeta.lastError)
-    : "Unknown Habitica proxy error";
-  rows.push({
-    key: "habitica",
-    name: "Habitica",
-    status: habitica?.status || (workerAuthConfigured ? "active" : "disabled"),
-    detail: habitica?.status || (workerAuthConfigured ? "authenticated" : "signed out"),
-    details: [
-      `Proxy URL: ${habiticaMeta.proxyBaseUrl || getHabiticaProxyBaseUrl()}`,
-      `Worker auth: ${workerAuthConfigured ? "Supabase session" : "signed out"}`,
-      `Last action: ${habiticaMeta.lastAction || "none"}`,
-      `Last check: ${formatConnectionDate(habiticaMeta.lastCheckedAt) || "never"}`,
-      habitica?.status === "disabled" ? `Disabled reason: ${habiticaDisabledReason}` : "",
-      habitica?.status === "error" ? `Error: ${habiticaErrorReason}` : "",
-    ].filter(Boolean),
-  });
 
   const clickup = integrationRemoteState.integrations.clickup;
   const clickupMeta = clickup?.metadata || {};
@@ -1050,7 +867,7 @@ function buildConnectionRows() {
     detail: openai?.status || (chatProxyConfigured ? "authenticated proxy" : "signed out"),
     details: [
       `Model: ${openaiMeta.model || "gpt-4o-mini"}`,
-      `Proxy URL: ${openaiMeta.proxyBaseUrl || getHabiticaProxyBaseUrl()}`,
+      `Proxy URL: ${openaiMeta.proxyBaseUrl || getWorkerBaseUrl()}`,
       `Worker auth: ${chatProxyConfigured ? "Supabase session" : "signed out"}`,
       "Provider key: stored in Worker",
       `Last action: ${openaiMeta.lastAction || "none"}`,
@@ -1077,7 +894,7 @@ function buildConnectionRows() {
     detail: deepseek?.status || (chatProxyConfigured ? "authenticated proxy" : "signed out"),
     details: [
       `Model: ${deepseekMeta.model || "deepseek-chat"}`,
-      `Proxy URL: ${deepseekMeta.proxyBaseUrl || getHabiticaProxyBaseUrl()}`,
+      `Proxy URL: ${deepseekMeta.proxyBaseUrl || getWorkerBaseUrl()}`,
       `Worker auth: ${chatProxyConfigured ? "Supabase session" : "signed out"}`,
       "Provider key: stored in Worker",
       `Last action: ${deepseekMeta.lastAction || "none"}`,
@@ -1104,7 +921,7 @@ function buildConnectionRows() {
     detail: gemini?.status || (chatProxyConfigured ? "authenticated proxy" : "signed out"),
     details: [
       `Model: ${geminiMeta.model || "gemini-3.5-flash"}`,
-      `Proxy URL: ${geminiMeta.proxyBaseUrl || getHabiticaProxyBaseUrl()}`,
+      `Proxy URL: ${geminiMeta.proxyBaseUrl || getWorkerBaseUrl()}`,
       `Worker auth: ${chatProxyConfigured ? "Supabase session" : "signed out"}`,
       "Provider key: stored in Worker",
       `Last action: ${geminiMeta.lastAction || "none"}`,
@@ -1447,7 +1264,6 @@ async function syncConfiguredIntegrationsState() {
   if (!backendState.client || !backendState.session) return;
 
   const workerAuthConfigured = hasWorkerAuthSession();
-  const habiticaMetadata = getIntegrationMetadata("habitica");
   const clickupMetadata = getIntegrationMetadata("clickup");
   const openAiMetadata = getIntegrationMetadata("openai");
   const geminiMetadata = getIntegrationMetadata("gemini");
@@ -1456,16 +1272,6 @@ async function syncConfiguredIntegrationsState() {
   const llamaCurrent = integrationRemoteState.integrations.llama;
 
   await Promise.all([
-    upsertBackendIntegration("habitica", {
-      status: workerAuthConfigured ? "active" : "disabled",
-      metadata: {
-        ...habiticaMetadata,
-        proxyBaseUrl: getHabiticaProxyBaseUrl(),
-        usesSupabaseAuth: true,
-        skillDailyMapConfigured:
-          typeof HABITICA_SKILL_DAILY_MAP === "object" && Boolean(HABITICA_SKILL_DAILY_MAP),
-      },
-    }),
     upsertBackendIntegration("clickup", {
       status: workerAuthConfigured ? "active" : "disabled",
       metadata: {
@@ -1482,7 +1288,7 @@ async function syncConfiguredIntegrationsState() {
         ...openAiMetadata,
         configured: workerAuthConfigured,
         directClient: false,
-        proxyBaseUrl: getHabiticaProxyBaseUrl(),
+        proxyBaseUrl: getWorkerBaseUrl(),
         usesSupabaseAuth: true,
         model: "gpt-4o-mini",
       },
@@ -1493,7 +1299,7 @@ async function syncConfiguredIntegrationsState() {
         ...geminiMetadata,
         configured: workerAuthConfigured,
         directClient: false,
-        proxyBaseUrl: getHabiticaProxyBaseUrl(),
+        proxyBaseUrl: getWorkerBaseUrl(),
         usesSupabaseAuth: true,
         model: "gemini-3.5-flash",
       },
@@ -1504,7 +1310,7 @@ async function syncConfiguredIntegrationsState() {
         ...deepseekMetadata,
         configured: workerAuthConfigured,
         directClient: false,
-        proxyBaseUrl: getHabiticaProxyBaseUrl(),
+        proxyBaseUrl: getWorkerBaseUrl(),
         usesSupabaseAuth: true,
         model: "deepseek-chat",
       },
@@ -1560,7 +1366,7 @@ const FEATURE_SYNC_DEFINITIONS = {
   plannerContainer: { key: "planner", label: "Planner" },
   recContainer: { key: "lists", label: "Lists" },
   nextFeatures: { key: "lists", label: "Lists" },
-  ideasContainer: { key: "ideas", label: "Ideas" },
+  notesContainer: { key: "notes", label: "Notes" },
   workoutContainer: { key: "workout", label: "Workout" },
   calendarContainer: { key: "calendar", label: "Calendar" },
   kanbanContainer: { key: "kanban", label: "Kanban" },
@@ -1652,9 +1458,9 @@ async function loadFeatureSyncGroup(key) {
     renderConnectionsStatus();
     return;
   }
-  if (key === "ideas") {
-    const tasks = await fetchHabiticaTasksFromProxy();
-    syncIdeasFromHabiticaTasks(tasks);
+  if (key === "notes") {
+    await loadNotesBackendState();
+    renderNotes();
   }
 }
 
@@ -5024,6 +4830,7 @@ const SKILL_LVL_ELEMENT_IDS = {
   meditation: "lvl3",
   content: "lvl4",
   standup: "lvl5",
+  jobhunting: "lvl6",
 };
 
 function refreshSkillXpUi(skill) {
@@ -5134,6 +4941,7 @@ window.onload = function () {
   draggable("todoContainer");
   draggable("recContainer");
   draggable("ideasContainer");
+  draggable("notesContainer");
   draggable("calendarContainer");
   draggable("wallpContainer");
   draggable("calcContainer");
@@ -5171,6 +4979,10 @@ window.onload = function () {
     minWidth: 560,
     minHeight: 420,
     onResize: scheduleWorkoutV2ChartRender,
+  });
+  makeResizable("notesContainer", {
+    minWidth: 420,
+    minHeight: 320,
   });
 };
 
@@ -5800,7 +5612,7 @@ function hideQuadro(idQuadro) {
   const quadro = document.getElementById(`${idQuadro}`);
   if (!quadro) return;
   const opening = window.getComputedStyle(quadro).display === "none";
-  const flexQuadros = ["chatContainer", "workoutContainer"];
+  const flexQuadros = ["chatContainer", "workoutContainer", "notesContainer"];
   quadro.style.display = opening
     ? (flexQuadros.includes(idQuadro) ? "flex" : "block")
     : "none";
@@ -6146,30 +5958,12 @@ async function addDaily() {
   const daily = {
     id: makeLocalTaskId(),
     text,
-    habiticaTaskId: "",
     source: "local",
     skillCode,
     sortOrder: getNextDailySortOrder(),
-    completedToday: false,
+    dailyDoneOn: "",
     createdAt: new Date().toISOString(),
   };
-
-  let habiticaTaskId = "";
-  let habiticaError = null;
-  try {
-    setHabiticaSyncStatus(`Creating "${text}" on Habitica...`);
-    const created = await createHabiticaTask(text, TASK_TYPE_DAILY);
-    if (created && typeof created.id === "string" && created.id) {
-      habiticaTaskId = created.id;
-      daily.habiticaTaskId = habiticaTaskId;
-      daily.source = LOCAL_TASK_SOURCE_HABITICA;
-    } else {
-      habiticaError = new Error("Habitica did not return a task id");
-    }
-  } catch (error) {
-    console.error("Daily Habitica creation error:", error);
-    habiticaError = error;
-  }
 
   if (isTaskBackendActive()) {
     try {
@@ -6185,70 +5979,41 @@ async function addDaily() {
       daily.createdAt = row.created_at;
       daily.sortOrder = normalizeTaskSortOrder(row.sort_order);
       daily.skillCode = normalizeDailySkillCode(row.skill_code) || skillCode;
-      if (habiticaTaskId) {
-        await upsertTaskExternalLink(row.id, habiticaTaskId, "pending", "daily");
-      }
       taskRemoteState.dailies.push(daily);
-      setHabiticaSyncStatus(
-        habiticaTaskId
-          ? `Habitica daily created and saved to DB: "${text}".`
-          : `Habitica unavailable; saved daily to DB: "${text}".`,
-      );
+      setDailiesStatus(`Saved daily "${text}".`);
     } catch (error) {
       console.error("Daily save error:", error);
       const dailies = getLocalDailyList();
       dailies.push(daily);
       setLocalDailyList(dailies);
       taskRemoteState.dailies.push(daily);
-      setHabiticaSyncStatus(
-        habiticaTaskId
-          ? `Habitica daily created, DB failed; saved locally: "${text}".`
-          : `DB failed; saved daily locally: ${describeBackendError(error)}`,
-      );
+      setDailiesStatus(`DB failed; saved daily locally: ${describeBackendError(error)}`);
     }
   } else {
     const dailies = getLocalDailyList();
     dailies.push(daily);
     setLocalDailyList(dailies);
-    setHabiticaSyncStatus(
-      habiticaTaskId
-        ? `Habitica daily created and saved locally: "${text}".`
-        : `Habitica unavailable; saved locally: "${text}".`,
-    );
+    setDailiesStatus(`Saved locally: "${text}".`);
   }
 
   renderDailies();
   dailyInputEl.value = "";
   if (dailySkillEl) dailySkillEl.value = "";
-  if (habiticaError) console.debug("Daily Habitica fallback reason:", habiticaError);
 }
 
 async function removeDaily(taskId) {
   const daily = getDailyTasks().find((item) => item.id === taskId);
   if (!daily) return;
 
-  if (daily.habiticaTaskId) {
-    try {
-      setHabiticaSyncStatus(`Deleting "${daily.text}" from Habitica...`);
-      await deleteHabiticaTodoTask(daily.habiticaTaskId);
-    } catch (error) {
-      console.error("Daily Habitica delete error:", error);
-      setHabiticaSyncStatus(
-        `Failed to delete "${daily.text}" from Habitica: ${error instanceof Error ? error.message : String(error)}`,
-      );
-      return;
-    }
-  }
-
   if (isTaskBackendActive()) {
     try {
       await deleteBackendTask(taskId);
       taskRemoteState.dailies = taskRemoteState.dailies.filter((item) => item.id !== taskId);
       renderDailies();
-      setHabiticaSyncStatus(`Removed "${daily.text}".`);
+      setDailiesStatus(`Removed "${daily.text}".`);
     } catch (error) {
       console.error("Daily delete error:", error);
-      setHabiticaSyncStatus(`Could not remove daily: ${describeBackendError(error)}`);
+      setDailiesStatus(`Could not remove daily: ${describeBackendError(error)}`);
     }
     return;
   }
@@ -6256,7 +6021,7 @@ async function removeDaily(taskId) {
   const dailies = getLocalDailyList().filter((item) => item.id !== taskId);
   setLocalDailyList(dailies);
   renderDailies();
-  setHabiticaSyncStatus(`Removed "${daily.text}".`);
+  setDailiesStatus(`Removed "${daily.text}".`);
 }
 
 function getSkillLabel(skillCode) {
@@ -6275,33 +6040,26 @@ function isSkillCompletedToday(skillCode) {
   return isGamifyDayDone(normalized, boardState[today.getDate()]);
 }
 
+function isDailyDoneToday(daily) {
+  const today = new Date();
+  return (
+    typeof daily.dailyDoneOn === "string" &&
+    daily.dailyDoneOn === trackerDateKey(today.getFullYear(), today.getMonth(), today.getDate())
+  );
+}
+
 function getDailyActionState(daily) {
   const historyDone = isSkillCompletedToday(daily.skillCode);
-  const remoteDone = Boolean(daily.completedToday);
+  const doneToday = isDailyDoneToday(daily);
   const needsHistorySync = Boolean(daily.skillCode) && !historyDone;
-  const needsHabiticaSync = Boolean(daily.habiticaTaskId) && !remoteDone;
 
-  if (!daily.skillCode && !daily.habiticaTaskId) {
-    return { label: "No sync", disabled: true, stateText: "Status: no skill or Habitica link" };
-  }
-  if (!needsHistorySync && !needsHabiticaSync) {
+  if (!needsHistorySync && doneToday) {
     return { label: "Done today ✓", disabled: true, stateText: "Status: completed today" };
   }
-  if (needsHistorySync && needsHabiticaSync) {
-    return { label: "Done today", disabled: false, stateText: "Status: pending today" };
-  }
   if (needsHistorySync) {
-    return {
-      label: "Save history",
-      disabled: false,
-      stateText: "Status: Habitica done, history pending",
-    };
+    return { label: "Save history", disabled: false, stateText: "Status: history pending" };
   }
-  return {
-    label: "Sync Habitica",
-    disabled: false,
-    stateText: "Status: history done, Habitica pending",
-  };
+  return { label: "Done today", disabled: false, stateText: "Status: pending today" };
 }
 
 function setDailyCompletionStateLocally(taskId, patch) {
@@ -6347,63 +6105,50 @@ async function syncDailyHistoryForToday(daily) {
   return true;
 }
 
+async function markDailyDoneToday(daily, year, month, day) {
+  const doneOn = trackerDateKey(year, month, day);
+  if (isTaskBackendActive()) {
+    await updateBackendTask(daily.id, { daily_done_on: doneOn });
+  }
+  setDailyCompletionStateLocally(daily.id, { dailyDoneOn: doneOn });
+}
+
 async function completeDaily(taskId, buttonEl) {
   const daily = getDailyTasks().find((item) => item.id === taskId);
   if (!daily) return;
   if (buttonEl) buttonEl.disabled = true;
 
   const historyDone = isSkillCompletedToday(daily.skillCode);
-  const remoteDone = Boolean(daily.completedToday);
-  let historyUpdated = false;
-  let remoteUpdated = false;
+  const doneToday = isDailyDoneToday(daily);
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const day = today.getDate();
+
+  if (historyDone && doneToday) {
+    setDailiesStatus(`"${daily.text}" was already done today.`);
+    if (buttonEl) buttonEl.disabled = false;
+    return;
+  }
 
   try {
     if (!historyDone && daily.skillCode === "fitness" && typeof handleWorkoutGamifyDay === "function") {
-      const today = new Date();
-      await handleWorkoutGamifyDay(today.getFullYear(), today.getMonth(), today.getDate());
-      setHabiticaSyncStatus(`Import today's Strong workout before scoring "${daily.text}".`);
+      await handleWorkoutGamifyDay(year, month, day);
+      setDailiesStatus(`Import today's Strong workout before scoring "${daily.text}".`);
       if (buttonEl) buttonEl.disabled = false;
       return;
     }
     if (!historyDone && daily.skillCode) {
-      historyUpdated = await syncDailyHistoryForToday(daily);
+      await syncDailyHistoryForToday(daily);
     }
-
-    if (!remoteDone && daily.habiticaTaskId) {
-      setHabiticaSyncStatus(`Scoring "${daily.text}" on Habitica...`);
-      await markHabiticaDailyDone(daily.habiticaTaskId);
-      remoteUpdated = true;
-      void recordIntegrationStatus("habitica", "active", {
-        lastAction: "score_daily",
-        lastTaskId: daily.habiticaTaskId,
-      });
-    }
-
-    if (remoteUpdated) {
-      setDailyCompletionStateLocally(taskId, { completedToday: true });
-    }
+    await markDailyDoneToday(daily, year, month, day);
     renderDailies();
-    if (historyUpdated || remoteUpdated) {
-      setHabiticaSyncStatus(`Done: "${daily.text}" updated.`);
-    } else {
-      setHabiticaSyncStatus(`"${daily.text}" was already up to date.`);
-    }
+    setDailiesStatus(`Done: "${daily.text}".`);
   } catch (error) {
     console.error("Daily completion error:", error);
-    void recordIntegrationStatus("habitica", "error", {
-      lastAction: "score_daily",
-      lastTaskId: daily.habiticaTaskId || "",
-      lastError: error instanceof Error ? error.message : String(error),
-    });
-    if (historyUpdated) {
-      setHabiticaSyncStatus(
-        `History saved for "${daily.text}", but Habitica failed: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    } else {
-      setHabiticaSyncStatus(
-        `Failed to update "${daily.text}": ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+    setDailiesStatus(
+      `Failed to update "${daily.text}": ${error instanceof Error ? error.message : String(error)}`,
+    );
     if (buttonEl) buttonEl.disabled = false;
     renderDailies();
   }
@@ -6421,7 +6166,7 @@ function renderDailies() {
   if (dailies.length === 0) {
     const li = document.createElement("li");
     li.className = "todo-task-item";
-    li.textContent = "No dailies yet. Sync Habitica or add one here.";
+    li.textContent = "No dailies yet. Add one below.";
     dailiesList.appendChild(li);
     return;
   }
@@ -6444,13 +6189,6 @@ function renderDailies() {
       text.classList.add("todo-task-text--desynced");
     }
     main.appendChild(text);
-
-    if (daily.habiticaTaskId) {
-      const badge = document.createElement("span");
-      badge.className = "todo-task-badge";
-      badge.textContent = "Habitica";
-      main.appendChild(badge);
-    }
 
     if (daily.skillCode) {
       const skillBadge = document.createElement("span");
@@ -6491,525 +6229,39 @@ function renderDailies() {
 // Call renderDailies on page load to display any existing dailies
 document.addEventListener("DOMContentLoaded", renderDailies);
 
-const LOCAL_HABITICA_PROXY_DEFAULT = "http://127.0.0.1:8787";
-const HABITICA_SKILL_DAILY_ALIASES = {
-  coding: ["coding", "code"],
-  fitness: ["fitness", "physique", "physical"],
-  content: ["content"],
-  meditation: ["meditation", "meditate"],
-};
+const LOCAL_WORKER_PROXY_DEFAULT = "http://127.0.0.1:8787";
 
-function getHabiticaProxyBaseUrl() {
+function getWorkerBaseUrl() {
   if (typeof LOCAL_PROXY_BASE_URL === "string" && LOCAL_PROXY_BASE_URL.trim()) {
     return LOCAL_PROXY_BASE_URL.trim().replace(/\/+$/, "");
   }
-  return LOCAL_HABITICA_PROXY_DEFAULT;
+  return LOCAL_WORKER_PROXY_DEFAULT;
 }
 
 function getWorkerProxyBaseUrl() {
-  return getHabiticaProxyBaseUrl();
+  return getWorkerBaseUrl();
 }
 
-function setHabiticaSyncStatus(message) {
-  const status = document.getElementById("habiticaSyncStatus");
+function setDailiesStatus(message) {
+  const status = document.getElementById("dailiesStatus");
   if (!status) return;
   status.textContent = message;
 }
 
-function isHabiticaDailyTask(task) {
-  const type = task && typeof task.type === "string" ? task.type.toLowerCase() : "";
-  if (type === "daily") return true;
-  const title = task && typeof task.text === "string" ? task.text : "";
-  return /^\s*\[daily\]/i.test(title);
-}
-
-function isHabiticaTodoTask(task) {
-  const type = task && typeof task.type === "string" ? task.type.toLowerCase() : "";
-  if (type === "todo") return true;
-  const title = task && typeof task.text === "string" ? task.text : "";
-  return /^\s*\[todo\]/i.test(title);
-}
-
-function getHabiticaTaskTitle(task) {
-  const rawTitle = task && typeof task.text === "string" ? task.text : "Untitled";
-  return rawTitle.replace(/^\s*\[(daily|todo|habit)\]\s*/i, "").trim() || "Untitled";
-}
-
-function normalizeHabiticaTitle(value) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function getHabiticaSkillAliases(skill) {
-  if (
-    typeof HABITICA_SKILL_DAILY_MAP === "object" &&
-    HABITICA_SKILL_DAILY_MAP &&
-    Array.isArray(HABITICA_SKILL_DAILY_MAP[skill])
-  ) {
-    return HABITICA_SKILL_DAILY_MAP[skill];
-  }
-  return HABITICA_SKILL_DAILY_ALIASES[skill] || [];
-}
-
-function matchesHabiticaSkillDaily(skill, task) {
-  const aliases = getHabiticaSkillAliases(skill);
-  if (!aliases.length) return false;
-  const title = normalizeHabiticaTitle(getHabiticaTaskTitle(task));
-  if (!title) return false;
-
-  return aliases.some((alias) => {
-    const normalizedAlias = normalizeHabiticaTitle(alias);
-    if (!normalizedAlias) return false;
-    if (title === normalizedAlias) return true;
-    return title.split(" ").includes(normalizedAlias);
-  });
-}
-
-function getHabiticaTaskCompleted(task) {
-  return Boolean(task && task.completed);
-}
-
-async function fetchHabiticaTasksFromProxy() {
-  const baseUrl = getHabiticaProxyBaseUrl();
-  const authorizationHeaders = await getWorkerAuthorizationHeaders();
-
-  const response = await fetch(`${baseUrl}/api/habitica/tasks`, {
-    method: "GET",
-    headers: authorizationHeaders,
-  });
-
-  const payload = await response.json();
-  if (!response.ok) {
-    const errMsg =
-      payload && typeof payload.error === "string"
-        ? payload.error
-        : `HTTP ${response.status}`;
-    throw new Error(errMsg);
-  }
-
-  const tasks = Array.isArray(payload?.data)
-    ? payload.data
-    : Array.isArray(payload)
-      ? payload
-      : [];
-  return tasks;
-}
-
-async function markHabiticaTaskDone(taskId) {
-  const baseUrl = getHabiticaProxyBaseUrl();
-  const authorizationHeaders = await getWorkerAuthorizationHeaders();
-
-  const response = await fetch(
-    `${baseUrl}/api/habitica/tasks/${encodeURIComponent(taskId)}/score/up`,
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...authorizationHeaders,
-      },
-    },
-  );
-
-  let payload = null;
-  try {
-    payload = await response.json();
-  } catch (_error) {
-    payload = null;
-  }
-
-  if (!response.ok) {
-    const errMsg =
-      payload && typeof payload.error === "string"
-        ? payload.error
-        : `HTTP ${response.status}`;
-    throw new Error(errMsg);
-  }
-
-  return true;
-}
-
-async function markHabiticaDailyDone(taskId) {
-  return markHabiticaTaskDone(taskId);
-}
-
-async function createHabiticaTask(text, type = TASK_TYPE_TODO) {
-  const baseUrl = getHabiticaProxyBaseUrl();
-  const authorizationHeaders = await getWorkerAuthorizationHeaders();
-
-  const endpoints = ["/api/habitica/tasks", "/api/habitica/tasks/user"];
-  let lastError = null;
-
-  for (const endpoint of endpoints) {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...authorizationHeaders,
-      },
-      body: JSON.stringify({
-        type,
-        text,
-      }),
-    });
-
-    let payload = null;
-    try {
-      payload = await response.json();
-    } catch (_error) {
-      payload = null;
-    }
-
-    if (response.ok) {
-      if (payload && payload.data && typeof payload.data === "object") {
-        return payload.data;
-      }
-      return payload;
-    }
-
-    const errMsg =
-      payload && typeof payload.error === "string"
-        ? payload.error
-        : `HTTP ${response.status}`;
-    lastError = new Error(`${endpoint}: ${errMsg}`);
-  }
-
-  throw lastError || new Error(`Failed to create Habitica ${type}`);
-}
-
-async function createHabiticaTodoTask(text) {
-  return createHabiticaTask(text, TASK_TYPE_TODO);
-}
-
-async function deleteHabiticaTodoTask(taskId) {
-  const baseUrl = getHabiticaProxyBaseUrl();
-  const authorizationHeaders = await getWorkerAuthorizationHeaders();
-
-  const response = await fetch(
-    `${baseUrl}/api/habitica/tasks/${encodeURIComponent(taskId)}`,
-    {
-      method: "DELETE",
-      headers: {
-        "content-type": "application/json",
-        ...authorizationHeaders,
-      },
-    },
-  );
-
-  let payload = null;
-  try {
-    payload = await response.json();
-  } catch (_error) {
-    payload = null;
-  }
-
-  if (!response.ok) {
-    const errMsg =
-      payload && typeof payload.error === "string"
-        ? payload.error
-        : `HTTP ${response.status}`;
-    throw new Error(errMsg);
-  }
-
-  return true;
-}
-
-async function syncHabiticaTodosToLocalTaskList(tasks) {
-  try {
-    const allTasks = Array.isArray(tasks) ? tasks : await fetchHabiticaTasksFromProxy();
-    if (!Array.isArray(allTasks)) return null;
-
-    const habiticaTodos = allTasks.filter(
-      (task) => isHabiticaTodoTask(task) && !getHabiticaTaskCompleted(task),
-    );
-    const pendingIds = new Set(
-      habiticaTodos
-        .map((task) => (typeof task.id === "string" ? task.id : ""))
-        .filter(Boolean),
-    );
-
-    const localTasks = getTasks();
-    const byHabiticaId = new Map(
-      localTasks
-        .filter((task) => task.habiticaTaskId)
-        .map((task) => [task.habiticaTaskId, task]),
-    );
-
-    let added = 0;
-    let updated = 0;
-    let removed = 0;
-    let changed = false;
-
-    // Process Habitica todos - these are the source of truth
-    for (const todo of habiticaTodos) {
-      const id = typeof todo.id === "string" ? todo.id : "";
-      if (!id) continue;
-      const title = getHabiticaTaskTitle(todo);
-      const existing = byHabiticaId.get(id);
-      if (existing) {
-        // Update existing task if text has changed
-        if (existing.text !== title) {
-          existing.text = title;
-          if (isTaskBackendActive()) {
-            await updateBackendTask(existing.id, { text: title });
-          }
-          changed = true;
-          updated++;
-        }
-        continue;
-      }
-
-      // Add new task from Habitica
-      const nextTask = {
-        id: makeLocalTaskId(),
-        text: title,
-        habiticaTaskId: id,
-        source: LOCAL_TASK_SOURCE_HABITICA,
-        createdAt: new Date().toISOString(),
-      };
-
-      if (isTaskBackendActive()) {
-        try {
-          const row = await createBackendTask({
-            text: title,
-            taskType: TASK_TYPE_TODO,
-            source: LOCAL_TASK_SOURCE_HABITICA,
-            createdAt: nextTask.createdAt,
-          });
-          nextTask.id = row.id;
-          nextTask.createdAt = row.created_at;
-          await upsertTaskExternalLink(row.id, id);
-        } catch (error) {
-          console.error("Habitica todo DB sync error:", error);
-          saveTodoToLocalFallback(nextTask);
-          setTodoSyncStatus(`Habitica sync DB failed; saved "${title}" locally.`);
-        }
-      } else {
-        saveTodoToLocalFallback(nextTask);
-      }
-
-      localTasks.push(nextTask);
-      changed = true;
-      added++;
-    }
-
-    // Remove local tasks that no longer exist in Habitica (source of truth)
-    for (let i = localTasks.length - 1; i >= 0; i--) {
-      const localTask = localTasks[i];
-      // Only process tasks that came from Habitica
-      if (!localTask.habiticaTaskId) continue;
-      // If the Habitica task no longer exists, remove it locally
-      if (!pendingIds.has(localTask.habiticaTaskId)) {
-        if (isTaskBackendActive()) {
-          try {
-            // Mark as completed in backend (soft delete)
-            await updateBackendTask(localTask.id, { completed_at: new Date().toISOString() });
-          } catch (error) {
-            console.error("Habitica todo DB remove error:", error);
-          }
-        }
-        // Remove from local array
-        localTasks.splice(i, 1);
-        removed++;
-        changed = true;
-      }
-    }
-
-    if (changed) {
-      setTasks(localTasks);
-      renderTaskList();
-    }
-    return { pending: habiticaTodos.length, added, updated, removed };
-  } catch (error) {
-    console.error("Habitica todo sync error:", error);
-    throw error;
-  }
-}
-
-function inferDailySkillCodeFromTask(task) {
-  const matchedSkill = Object.keys(GAMIFY_SKILLS).find((skill) =>
-    matchesHabiticaSkillDaily(skill, task),
-  );
-  return normalizeDailySkillCode(matchedSkill || "");
-}
-
-async function syncHabiticaDailiesToTaskList(tasks) {
-  const allTasks = Array.isArray(tasks) ? tasks : await fetchHabiticaTasksFromProxy();
-  if (!Array.isArray(allTasks)) return null;
-
-  const habiticaDailies = allTasks.filter(isHabiticaDailyTask);
-  const remoteIds = new Set(
-    habiticaDailies
-      .map((task) => (typeof task.id === "string" ? task.id : ""))
-      .filter(Boolean),
-  );
-
-  const existingDailies = [...getDailyTasks()];
-  const byHabiticaId = new Map(
-    existingDailies
-      .filter((daily) => daily.habiticaTaskId)
-      .map((daily) => [daily.habiticaTaskId, daily]),
-  );
-
-  let added = 0;
-  let updated = 0;
-  let removed = 0;
-
-  for (const task of habiticaDailies) {
-    const habiticaTaskId = typeof task.id === "string" ? task.id : "";
-    if (!habiticaTaskId) continue;
-    const title = getHabiticaTaskTitle(task);
-    const completedToday = getHabiticaTaskCompleted(task);
-    const existing = byHabiticaId.get(habiticaTaskId);
-
-    if (existing) {
-      let changed = false;
-      if (existing.text !== title) {
-        existing.text = title;
-        changed = true;
-      }
-      if (existing.completedToday !== completedToday) {
-        existing.completedToday = completedToday;
-        changed = true;
-      }
-      if (!existing.skillCode) {
-        const inferredSkillCode = inferDailySkillCodeFromTask(task);
-        if (inferredSkillCode) {
-          existing.skillCode = inferredSkillCode;
-          changed = true;
-          if (isTaskBackendActive()) {
-            await updateBackendTask(existing.id, { skill_code: inferredSkillCode });
-          }
-        }
-      }
-      if (changed && isTaskBackendActive()) {
-        await updateBackendTask(existing.id, {
-          text: existing.text,
-          skill_code: existing.skillCode || null,
-        });
-        updated++;
-      } else if (changed) {
-        updated++;
-      }
-      continue;
-    }
-
-    const inferredSkillCode = inferDailySkillCodeFromTask(task);
-    const nextDaily = normalizeLocalDailyEntry({
-      id: makeLocalTaskId(),
-      text: title,
-      habiticaTaskId,
-      source: LOCAL_TASK_SOURCE_HABITICA,
-      skillCode: inferredSkillCode,
-      sortOrder: getNextDailySortOrder(existingDailies),
-      completedToday,
-      createdAt: new Date().toISOString(),
-    });
-
-    if (isTaskBackendActive()) {
-      const row = await createBackendTask({
-        text: title,
-        taskType: TASK_TYPE_DAILY,
-        source: LOCAL_TASK_SOURCE_HABITICA,
-        skillCode: inferredSkillCode,
-        sortOrder: nextDaily.sortOrder,
-        createdAt: nextDaily.createdAt,
-      });
-      nextDaily.id = row.id;
-      nextDaily.createdAt = row.created_at;
-      nextDaily.sortOrder = normalizeTaskSortOrder(row.sort_order);
-      await upsertTaskExternalLink(row.id, habiticaTaskId, "pending", "daily");
-    } else {
-      const localDailies = getLocalDailyList();
-      localDailies.push(nextDaily);
-      setLocalDailyList(localDailies);
-    }
-
-    existingDailies.push(nextDaily);
-    byHabiticaId.set(habiticaTaskId, nextDaily);
-    added++;
-  }
-
-  for (let i = existingDailies.length - 1; i >= 0; i--) {
-    const daily = existingDailies[i];
-    if (!daily.habiticaTaskId) continue;
-    if (remoteIds.has(daily.habiticaTaskId)) continue;
-
-    if (isTaskBackendActive()) {
-      await deleteBackendTask(daily.id);
-    }
-    existingDailies.splice(i, 1);
-    removed++;
-  }
-
-  setDailyTasks(existingDailies);
-  renderDailies();
-  return { total: habiticaDailies.length, added, updated, removed };
-}
-
-async function loadHabiticaTasks() {
-  const syncBtn = document.getElementById("habiticaSyncBtn");
-  if (syncBtn) syncBtn.disabled = true;
-  setHabiticaSyncStatus("Syncing...");
-
-  try {
-    const tasks = await fetchHabiticaTasksFromProxy();
-    if (!tasks) return;
-    const baseUrl = getHabiticaProxyBaseUrl();
-    const dailyResult = await syncHabiticaDailiesToTaskList(tasks);
-    await syncHabiticaTodosToLocalTaskList(tasks);
-    syncIdeasFromHabiticaTasks(tasks);
-    const dailyCount = tasks.filter(isHabiticaDailyTask).length;
-    void recordIntegrationStatus("habitica", "active", {
-      lastAction: "sync_tasks",
-      lastTaskCount: tasks.length,
-      lastDailyCount: dailyCount,
-      proxyBaseUrl: baseUrl,
-      usesSupabaseAuth: true,
-    });
-    setHabiticaSyncStatus(
-      `Synced ${dailyCount} dailies (${dailyResult?.added || 0} added, ${dailyResult?.updated || 0} updated, ${dailyResult?.removed || 0} removed) from ${baseUrl}.`,
-    );
-  } catch (error) {
-    console.error("Habitica sync error:", error);
-    void recordIntegrationStatus("habitica", "error", {
-      lastAction: "sync_tasks",
-      lastError: error instanceof Error ? error.message : String(error),
-      proxyBaseUrl: getHabiticaProxyBaseUrl(),
-      usesSupabaseAuth: true,
-    });
-    setHabiticaSyncStatus("Sync failed. Check Supabase login, Worker URL, and Wrangler.");
-  } finally {
-    if (syncBtn) syncBtn.disabled = false;
-  }
-}
 
 document.addEventListener("DOMContentLoaded", function () {
-  const syncBtn = document.getElementById("habiticaSyncBtn");
-  if (syncBtn) {
-    syncBtn.addEventListener("click", loadHabiticaTasks);
-  }
   const dailyInput = document.getElementById("dailyInput");
   if (dailyInput) {
     dailyInput.addEventListener("keydown", function (event) {
       if (event.key === "Enter") addDaily();
     });
   }
-  setHabiticaSyncStatus("Ready. Click sync to read Habitica tasks.");
+  setDailiesStatus("Ready.");
 });
-
-// IDEAS (Video + Joke) with Habitica habit scoring
+// IDEAS (Video + Joke) - owned locally by Startpage
 
 const IDEA_VIDEOS_STORAGE_KEY = "ideaVideosList";
 const IDEA_JOKES_STORAGE_KEY = "ideaJokesList";
-
-const HABITICA_IDEA_HABIT_ALIASES = {
-  video: ["video", "video idea", "video ideia", "video content"],
-  joke: ["joke", "joke idea", "piada"],
-};
 
 function setIdeasSyncStatus(message) {
   const status = document.getElementById("ideasSyncStatus");
@@ -7032,237 +6284,59 @@ function setJokeIdeas(items) {
   setLocalTextList(IDEA_JOKES_STORAGE_KEY, "jokeidea", items);
 }
 
-function isHabiticaHabitTask(task) {
-  const type = task && typeof task.type === "string" ? task.type.toLowerCase() : "";
-  if (type === "habit") return true;
-  const title = task && typeof task.text === "string" ? task.text : "";
-  return /^\s*\[habit\]/i.test(title);
-}
-
-function findHabiticaIdeaHabit(tasks, category) {
-  const aliases = HABITICA_IDEA_HABIT_ALIASES[category] || [];
-  return (Array.isArray(tasks) ? tasks : [])
-    .filter(isHabiticaHabitTask)
-    .find((task) => {
-      const title = normalizeHabiticaTitle(getHabiticaTaskTitle(task));
-      return aliases.some((alias) => {
-        const normalizedAlias = normalizeHabiticaTitle(alias);
-        return title === normalizedAlias || title.includes(normalizedAlias);
-      });
-    });
-}
-
-function getHabiticaIdeaLines(notes, prefix) {
-  return String(notes || "")
-    .split(/\r?\n/)
-    .map((line) => line.match(/^\s*-\s*(.*?)\s*$/)?.[1] || "")
-    .filter(Boolean)
-    .map((text) => ({
-      id: makeLocalListItemId(prefix),
-      text,
-      createdAt: new Date().toISOString(),
-    }));
-}
-
-function syncIdeasFromHabiticaTasks(tasks) {
-  const videoHabit = findHabiticaIdeaHabit(tasks, "video");
-  const jokeHabit = findHabiticaIdeaHabit(tasks, "joke");
-
-  if (videoHabit) {
-    setVideoIdeas(getHabiticaIdeaLines(videoHabit.notes, "vididea"));
-  }
-  if (jokeHabit) {
-    setJokeIdeas(getHabiticaIdeaLines(jokeHabit.notes, "jokeidea"));
-  }
-
-  renderIdeas();
-  const syncedCategories = [videoHabit && "video", jokeHabit && "joke"].filter(Boolean);
-  if (syncedCategories.length) {
-    setIdeasSyncStatus(`Loaded ${syncedCategories.join(" and ")} ideas from Habitica.`);
-  }
-}
-
-async function updateHabiticaTaskNotes(taskId, notes) {
-  const baseUrl = getHabiticaProxyBaseUrl();
-  const authorizationHeaders = await getWorkerAuthorizationHeaders();
-  const response = await fetch(
-    `${baseUrl}/api/habitica/tasks/${encodeURIComponent(taskId)}`,
-    {
-      method: "PUT",
-      headers: {
-        "content-type": "application/json",
-        ...authorizationHeaders,
-      },
-      body: JSON.stringify({ notes }),
-    },
-  );
-
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null);
-    throw new Error(payload?.error || `HTTP ${response.status}`);
-  }
-}
-
-async function scoreHabiticaIdeaHabitUp(category, ideaText) {
-  const aliases = HABITICA_IDEA_HABIT_ALIASES[category];
-  if (!aliases || !aliases.length) return;
-
-  try {
-    const tasks = await fetchHabiticaTasksFromProxy();
-    if (!Array.isArray(tasks)) {
-      setIdeasSyncStatus("Could not fetch Habitica tasks to score habit.");
-      return;
-    }
-
-    const habits = tasks.filter(isHabiticaHabitTask);
-    if (habits.length === 0) {
-      setIdeasSyncStatus("No habits found in Habitica. Create one first.");
-      return;
-    }
-
-    const targetHabit = findHabiticaIdeaHabit(tasks, category);
-
-    if (!targetHabit) {
-      const aliasList = aliases.join(", ");
-      setIdeasSyncStatus(`No Habitica habit found matching "${aliasList}".`);
-      return;
-    }
-
-    const taskId = typeof targetHabit.id === "string" ? targetHabit.id : "";
-    if (!taskId) {
-      setIdeasSyncStatus("Found habit but missing task ID.");
-      return;
-    }
-
-    const habitTitle = getHabiticaTaskTitle(targetHabit);
-
-    // 1. Score up the habit (+)
-    await markHabiticaTaskDone(taskId);
-
-    // 2. Append idea to the habit's notes
-    if (ideaText) {
-      const currentNotes = typeof targetHabit.notes === "string" ? targetHabit.notes.trim() : "";
-      const newLine = `- ${ideaText}`;
-      const updatedNotes = currentNotes
-        ? `${currentNotes}\n${newLine}`
-        : newLine;
-
-      try {
-        await updateHabiticaTaskNotes(taskId, updatedNotes);
-      } catch (error) {
-        setIdeasSyncStatus(
-          `+1 on "${habitTitle}", but notes update failed: ${error instanceof Error ? error.message : String(error)}`,
-        );
-        return;
-      }
-    }
-
-    setIdeasSyncStatus(`+1 on "${habitTitle}" (notes updated)`);
-  } catch (error) {
-    console.error("Habitica habit score error:", error);
-    setIdeasSyncStatus(`Failed to score habit: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
-
 function renderIdeas() {
   renderTextList("videoIdeaList", getVideoIdeas(), removeVideoIdea);
   renderTextList("jokeIdeaList", getJokeIdeas(), removeJokeIdea);
 }
 
-async function addVideoIdea() {
-  const input = document.getElementById("videoIdeaInput");
+function addIdea(category) {
+  const isVideo = category === "video";
+  const input = document.getElementById(isVideo ? "videoIdeaInput" : "jokeIdeaInput");
   if (!input) return;
   const text = input.value.trim();
   if (!text) return;
 
   const item = {
-    id: makeLocalListItemId("vididea"),
+    id: makeLocalListItemId(isVideo ? "vididea" : "jokeidea"),
     text,
     createdAt: new Date().toISOString(),
   };
-  const items = getVideoIdeas();
+  const items = isVideo ? getVideoIdeas() : getJokeIdeas();
   items.push(item);
-  setVideoIdeas(items);
+  if (isVideo) setVideoIdeas(items);
+  else setJokeIdeas(items);
   renderIdeas();
   input.value = "";
-  setIdeasSyncStatus(`Saved "${text}". Scoring Habitica habit...`);
-  await scoreHabiticaIdeaHabitUp("video", text);
+  setIdeasSyncStatus(`Saved "${text}".`);
 }
 
-async function addJokeIdea() {
-  const input = document.getElementById("jokeIdeaInput");
-  if (!input) return;
-  const text = input.value.trim();
-  if (!text) return;
-
-  const item = {
-    id: makeLocalListItemId("jokeidea"),
-    text,
-    createdAt: new Date().toISOString(),
-  };
-  const items = getJokeIdeas();
-  items.push(item);
-  setJokeIdeas(items);
-  renderIdeas();
-  input.value = "";
-  setIdeasSyncStatus(`Saved "${text}". Scoring Habitica habit...`);
-  await scoreHabiticaIdeaHabitUp("joke", text);
+function addVideoIdea() {
+  addIdea("video");
 }
 
-async function removeHabiticaIdea(category, itemId) {
+function addJokeIdea() {
+  addIdea("joke");
+}
+
+function removeIdea(category, itemId) {
   const isVideo = category === "video";
   const items = isVideo ? getVideoIdeas() : getJokeIdeas();
   const item = items.find((candidate) => candidate.id === itemId);
   if (!item) return;
 
-  setIdeasSyncStatus(`Removing "${item.text}" from Habitica...`);
-
-  try {
-    const tasks = await fetchHabiticaTasksFromProxy();
-    const targetHabit = findHabiticaIdeaHabit(tasks, category);
-    const taskId = typeof targetHabit?.id === "string" ? targetHabit.id : "";
-    if (!taskId) {
-      throw new Error(`Habitica ${category} idea habit was not found`);
-    }
-
-    let removed = false;
-    const updatedNotes = String(targetHabit.notes || "")
-      .split(/\r?\n/)
-      .filter((line) => {
-        if (removed) return true;
-        const ideaText = line.match(/^\s*-\s*(.*?)\s*$/)?.[1] || "";
-        if (ideaText !== item.text.trim()) return true;
-        removed = true;
-        return false;
-      })
-      .join("\n");
-
-    if (!removed) {
-      throw new Error("matching idea line was not found in Habitica notes");
-    }
-
-    await updateHabiticaTaskNotes(taskId, updatedNotes);
-    if (isVideo) {
-      setVideoIdeas(items.filter((candidate) => candidate.id !== itemId));
-    } else {
-      setJokeIdeas(items.filter((candidate) => candidate.id !== itemId));
-    }
-    renderIdeas();
-    setIdeasSyncStatus(`Removed "${item.text}" from Habitica.`);
-  } catch (error) {
-    console.error("Habitica idea removal error:", error);
-    setIdeasSyncStatus(
-      `Could not remove idea: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
+  const remaining = items.filter((candidate) => candidate.id !== itemId);
+  if (isVideo) setVideoIdeas(remaining);
+  else setJokeIdeas(remaining);
+  renderIdeas();
+  setIdeasSyncStatus(`Removed "${item.text}".`);
 }
 
-async function removeVideoIdea(itemId) {
-  await removeHabiticaIdea("video", itemId);
+function removeVideoIdea(itemId) {
+  removeIdea("video", itemId);
 }
 
-async function removeJokeIdea(itemId) {
-  await removeHabiticaIdea("joke", itemId);
+function removeJokeIdea(itemId) {
+  removeIdea("joke", itemId);
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -7281,6 +6355,218 @@ document.addEventListener("DOMContentLoaded", function () {
       if (event.key === "Enter") addJokeIdea();
     });
   }
+});
+
+// NOTES
+
+const notesRemoteState = {
+  loaded: false,
+  sections: [],
+};
+
+function setNotesStatus(message) {
+  const status = document.getElementById("notesStatus");
+  if (status) status.textContent = message;
+}
+
+function parseNoteBody(body) {
+  if (typeof NotesCore !== "object" || !NotesCore) return [];
+  return NotesCore.parseNoteBody(body);
+}
+
+function normalizeNoteSectionRow(row) {
+  const slug = typeof row.slug === "string" ? row.slug.trim() : "";
+  const title = typeof row.title === "string" ? row.title.trim() : "";
+  if (!slug || !title) return null;
+  return {
+    id: row.id,
+    slug,
+    title,
+    body: typeof row.body === "string" ? row.body : "",
+    sortOrder: normalizeTaskSortOrder(row.sort_order),
+    editing: false,
+  };
+}
+
+function isNotesBackendActive() {
+  return Boolean(backendState.client && backendState.session && notesRemoteState.loaded);
+}
+
+async function loadNotesBackendState() {
+  const userId = getBackendUserId();
+  if (!backendState.client || !userId) {
+    notesRemoteState.loaded = false;
+    return;
+  }
+
+  const rows = throwIfSupabaseError(
+    await backendState.client
+      .from("notes_sections")
+      .select("id, slug, title, body, sort_order")
+      .eq("user_id", userId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
+  );
+
+  notesRemoteState.sections = (rows || []).map(normalizeNoteSectionRow).filter(Boolean);
+  notesRemoteState.loaded = true;
+}
+
+function getNoteSections() {
+  return isNotesBackendActive() ? notesRemoteState.sections : [];
+}
+
+function buildNoteBody(body) {
+  const panel = document.createElement("div");
+  panel.className = "note-section-body";
+
+  const blocks = parseNoteBody(body);
+  if (blocks.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "note-section-empty";
+    empty.textContent = "Empty. Use edit to fill it in.";
+    panel.appendChild(empty);
+    return panel;
+  }
+
+  blocks.forEach((block) => {
+    const line = document.createElement("div");
+    line.className = `note-block note-block--${block.type}`;
+    if (block.text) line.appendChild(document.createTextNode(block.text));
+    if (block.url) {
+      if (block.text) line.appendChild(document.createTextNode(" "));
+      const anchor = document.createElement("a");
+      anchor.href = block.url;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      anchor.textContent = block.url;
+      line.appendChild(anchor);
+    }
+    panel.appendChild(line);
+  });
+
+  return panel;
+}
+
+function buildNoteSection(section) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "note-section";
+  wrapper.dataset.slug = section.slug;
+
+  const header = document.createElement("div");
+  header.className = "note-section-header";
+
+  const title = document.createElement("span");
+  title.className = "note-section-title";
+  title.textContent = section.title;
+  header.appendChild(title);
+
+  const actions = document.createElement("div");
+  actions.className = "note-section-actions";
+
+  if (section.editing) {
+    const saveButton = document.createElement("button");
+    saveButton.type = "button";
+    saveButton.textContent = "save";
+    saveButton.addEventListener("click", function () {
+      const area = wrapper.querySelector("textarea");
+      void saveNoteSection(section.id, area ? area.value : section.body);
+    });
+
+    const cancelButton = document.createElement("button");
+    cancelButton.type = "button";
+    cancelButton.textContent = "cancel";
+    cancelButton.addEventListener("click", function () {
+      section.editing = false;
+      renderNotes();
+    });
+
+    actions.appendChild(saveButton);
+    actions.appendChild(cancelButton);
+  } else {
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.textContent = "edit";
+    editButton.addEventListener("click", function () {
+      section.editing = true;
+      renderNotes();
+    });
+    actions.appendChild(editButton);
+  }
+
+  header.appendChild(actions);
+  wrapper.appendChild(header);
+
+  if (section.editing) {
+    const area = document.createElement("textarea");
+    area.value = section.body;
+    area.setAttribute("aria-label", `${section.title} body`);
+    wrapper.appendChild(area);
+  } else {
+    wrapper.appendChild(buildNoteBody(section.body));
+  }
+
+  return wrapper;
+}
+
+function renderNotes() {
+  const host = document.getElementById("notesSections");
+  if (!host) return;
+  host.innerHTML = "";
+
+  if (!backendState.session) {
+    const signedOut = document.createElement("p");
+    signedOut.className = "note-section-empty";
+    signedOut.textContent = "Sign in to load your notes.";
+    host.appendChild(signedOut);
+    return;
+  }
+
+  const sections = getNoteSections();
+  if (sections.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "note-section-empty";
+    empty.textContent = "No note sections yet. Run the notes seed in the Supabase SQL editor.";
+    host.appendChild(empty);
+    return;
+  }
+
+  sections.forEach((section) => host.appendChild(buildNoteSection(section)));
+}
+
+async function saveNoteSection(sectionId, body) {
+  const section = getNoteSections().find((candidate) => candidate.id === sectionId);
+  if (!section) return;
+
+  const userId = getBackendUserId();
+  if (!backendState.client || !userId) {
+    setNotesStatus("Sign in to save notes.");
+    return;
+  }
+
+  const nextBody = typeof body === "string" ? body : "";
+
+  try {
+    throwIfSupabaseError(
+      await backendState.client
+        .from("notes_sections")
+        .update({ body: nextBody })
+        .eq("id", sectionId)
+        .eq("user_id", userId),
+    );
+    section.body = nextBody;
+    section.editing = false;
+    renderNotes();
+    setNotesStatus(`Saved "${section.title}".`);
+  } catch (error) {
+    console.error("Notes save error:", error);
+    setNotesStatus(`Could not save "${section.title}": ${describeBackendError(error)}`);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  setNotesStatus("Ready.");
+  renderNotes();
 });
 
 /*DRAFT OF GENERIC FUNCTION FOR UP SKIL
@@ -7365,6 +6651,7 @@ const GAMIFY_SKILLS = {
   fitness: { label: "Physique", color: "#00bcd4" },
   standup: { label: "Stand Up", color: "#ef5350" },
   meditation: { label: "Meditation", color: "#7e57c2" },
+  jobhunting: { label: "Job Hunting", color: "#ffc107" },
 };
 
 const TRACKER_IMPORT_SCOPE = "trackers_v1";
@@ -7710,28 +6997,10 @@ async function syncMappedDailyFromGamifyChange(skill, prevValue, nextValue, year
   if (isGamifyDayDone(skill, prevValue) || !isGamifyDayDone(skill, nextValue)) return;
 
   const daily = findDailyBySkillCode(skill);
-  if (!daily || !daily.habiticaTaskId || daily.completedToday) return;
+  if (!daily || isDailyDoneToday(daily)) return;
 
-  try {
-    await markHabiticaDailyDone(daily.habiticaTaskId);
-    setDailyCompletionStateLocally(daily.id, { completedToday: true });
-    renderDailies();
-    void recordIntegrationStatus("habitica", "active", {
-      lastAction: "score_skill_daily",
-      lastSkill: skill,
-      lastTaskId: daily.habiticaTaskId,
-    });
-    setHabiticaSyncStatus(`Done: "${daily.text}" scored on Habitica.`);
-  } catch (error) {
-    console.error("Gamify daily Habitica sync error:", error);
-    void recordIntegrationStatus("habitica", "error", {
-      lastAction: "score_skill_daily",
-      lastSkill: skill,
-      lastTaskId: daily.habiticaTaskId,
-      lastError: error instanceof Error ? error.message : String(error),
-    });
-    setHabiticaSyncStatus(`History saved for ${skill}, but Habitica sync failed.`);
-  }
+  await markDailyDoneToday(daily, year, month, day);
+  renderDailies();
 }
 
 function toggleGamifyDay(skill, year, month, day) {
@@ -7752,7 +7021,11 @@ function toggleGamifyDay(skill, year, month, day) {
   saveBoardState(skill, year, month, boardState);
   void syncTrackerDayValue("skill", skill, year, month, day, nextValue);
   if (skill === "standup") recalculateGamifySkillXp(skill);
-  void syncMappedDailyFromGamifyChange(skill, prevValue, nextValue, year, month, day);
+  void syncMappedDailyFromGamifyChange(skill, prevValue, nextValue, year, month, day).catch(
+    (error) => {
+      console.error("Daily completion mirror error:", error);
+    },
+  );
 
   renderGamifyStreakCalendar();
   updateDailyCounter(skill);
@@ -8281,7 +7554,7 @@ async function sendChatMessage() {
   if (!userText) return;
   const provider = getSelectedChatProvider();
   const providerConfig = CHAT_ASSISTANT_PROVIDERS[provider];
-  const baseUrl = getHabiticaProxyBaseUrl();
+  const baseUrl = getWorkerBaseUrl();
 
   // Clear input
   chatInput.value = "";
@@ -8621,7 +7894,7 @@ document.addEventListener('click', function(event) {
 // LLM USAGE TRACKER
 
 async function fetchLlmUsageFromWorker(provider) {
-  const baseUrl = getHabiticaProxyBaseUrl();
+  const baseUrl = getWorkerBaseUrl();
   const authorizationHeaders = await getWorkerAuthorizationHeaders();
   const response = await fetch(`${baseUrl}/api/usage/${encodeURIComponent(provider)}`, {
     method: "GET",
