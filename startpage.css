@@ -1548,6 +1548,33 @@ th {
   color: #4d2f7a;
 }
 
+/* The name sits above its own description, so a daily can say what done means. */
+#dailiesContainer .todo-task-main {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.todo-task-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.todo-task-description {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #444;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+#dailiesContainer .todo-task-note {
+  min-width: 44px;
+}
+
 #dailiesContainer .todo-task-text--done {
   text-decoration: line-through;
   opacity: 0.7;

@@ -279,6 +279,7 @@ function normalizeLocalDailyEntry(daily) {
       skillCode: "",
       sortOrder: 0,
       dailyDoneOn: "",
+      description: "",
       createdAt: new Date().toISOString(),
     };
   }
@@ -293,6 +294,7 @@ function normalizeLocalDailyEntry(daily) {
     skillCode: normalizeDailySkillCode(daily.skillCode),
     sortOrder: normalizeTaskSortOrder(daily.sortOrder),
     dailyDoneOn: typeof daily.dailyDoneOn === "string" ? daily.dailyDoneOn.trim() : "",
+    description: typeof daily.description === "string" ? daily.description.trim() : "",
     createdAt:
       typeof daily.createdAt === "string" && daily.createdAt
         ? daily.createdAt
@@ -414,6 +416,7 @@ function mapTaskRowToDaily(row) {
     skillCode: row.skill_code,
     sortOrder: row.sort_order,
     dailyDoneOn: row.daily_done_on || "",
+    description: row.description || "",
     createdAt: row.created_at,
   });
 }
@@ -473,7 +476,7 @@ async function loadTaskBackendState() {
   const taskRows = throwIfSupabaseError(
     await backendState.client
       .from("tasks")
-      .select("id, text, task_type, source, skill_code, sort_order, daily_done_on, created_at")
+      .select("id, text, task_type, source, skill_code, sort_order, daily_done_on, description, created_at")
       .eq("user_id", userId)
       .is("completed_at", null)
       .in("task_type", [TASK_TYPE_TODO, TASK_TYPE_DAILY])
@@ -6113,6 +6116,33 @@ async function markDailyDoneToday(daily, year, month, day) {
   setDailyCompletionStateLocally(daily.id, { dailyDoneOn: doneOn });
 }
 
+async function setDailyDescription(daily, text) {
+  const next = typeof text === "string" ? text.trim() : "";
+
+  if (isTaskBackendActive()) {
+    try {
+      await updateBackendTask(daily.id, { description: next || null });
+    } catch (error) {
+      console.error("Daily description save error:", error);
+      setDailiesStatus(`Could not save the note: ${describeBackendError(error)}`);
+      return;
+    }
+  }
+
+  setDailyCompletionStateLocally(daily.id, { description: next });
+  renderDailies();
+  setDailiesStatus(
+    next ? `Note saved on "${daily.text}".` : `Note cleared on "${daily.text}".`,
+  );
+}
+
+function editDailyDescription(daily) {
+  const current = typeof daily.description === "string" ? daily.description : "";
+  const next = prompt(`Done means, for "${daily.text}":`, current);
+  if (next === null) return;
+  void setDailyDescription(daily, next);
+}
+
 async function completeDaily(taskId, buttonEl) {
   const daily = getDailyTasks().find((item) => item.id === taskId);
   if (!daily) return;
@@ -6188,13 +6218,24 @@ function renderDailies() {
     } else if (actionState.label === "Save history") {
       text.classList.add("todo-task-text--desynced");
     }
-    main.appendChild(text);
+    const titleRow = document.createElement("div");
+    titleRow.className = "todo-task-title-row";
+    titleRow.appendChild(text);
 
     if (daily.skillCode) {
       const skillBadge = document.createElement("span");
       skillBadge.className = "todo-task-badge todo-task-badge--skill";
       skillBadge.textContent = getSkillLabel(daily.skillCode);
-      main.appendChild(skillBadge);
+      titleRow.appendChild(skillBadge);
+    }
+
+    main.appendChild(titleRow);
+
+    if (daily.description) {
+      const description = document.createElement("p");
+      description.className = "todo-task-description";
+      description.textContent = daily.description;
+      main.appendChild(description);
     }
 
     const actions = document.createElement("div");
@@ -6217,7 +6258,19 @@ function renderDailies() {
       void removeDaily(daily.id);
     });
 
+    const noteButton = document.createElement("button");
+    noteButton.type = "button";
+    noteButton.className = "todo-task-note";
+    noteButton.textContent = "note";
+    noteButton.title = daily.description
+      ? "Edit what done means for this daily"
+      : "Say what done means for this daily";
+    noteButton.addEventListener("click", function () {
+      editDailyDescription(daily);
+    });
+
     actions.appendChild(doneButton);
+    actions.appendChild(noteButton);
     actions.appendChild(removeButton);
     li.appendChild(main);
     li.appendChild(actions);
