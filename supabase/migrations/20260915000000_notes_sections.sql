@@ -29,5 +29,6 @@ for each row execute function public.set_updated_at();
 
 alter table public.notes_sections enable row level security;
 
+drop policy if exists "notes_sections_all_own" on public.notes_sections;
 create policy "notes_sections_all_own" on public.notes_sections
 for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
