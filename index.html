@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>illan's hub</title>
-    <link rel="stylesheet" href="startpage.css?v=20260915-light-planner" />
+    <link rel="stylesheet" href="startpage.css?v=20260919-content-board" />
     <link rel="stylesheet" href="workout-v2.css?v=20260913-range-axis" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Roboto:wght@400&display=swap">
     <link rel="stylesheet" href="win98.ttf">
@@ -13,7 +13,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="workout-core.js?v=20260913-chart-time-axis" defer></script>
     <script src="notes-core.js?v=20260915-notes-title" defer></script>
-    <script src="startpage.js?v=20260915-light-planner" defer></script>
+    <script src="content-core.js?v=20260919-content-board" defer></script>
+    <script src="startpage.js?v=20260919-content-board" defer></script>
     <script src="workout-v2.js?v=20260913-range-axis" defer></script>
   </head>
   <body>
@@ -37,6 +38,10 @@
  <div class="icon" id="todoIconDiv" onclick="hideQuadro('dailiesContainer')">
     <img src="./imagens/98icons/w98_wia_img_check.ico"  width="60">
     <label>Dailies</label>
+ </div>
+ <div class="icon" id="contentIconDiv" onclick="hideQuadro('contentContainer')">
+    <img src="./imagens/98icons/w98_camera3_vid.ico" width="60">
+    <label>Content</label>
  </div>
  <div class="icon" id="calendarIconDiv" onclick="clearDisplay(), hideQuadro('calendarContainer')">
      <img src="./imagens/w98_calendar.ico" width="60">
@@ -217,6 +222,27 @@
 			  </div>
       </div>
 			</div>
+<!-- CONTENT BOARD -->
+      <div class="quadros" id="contentContainer" style="display: none">
+        <div class="titleBar">
+          <h2>Content</h2>
+          <button onclick="hideQuadro('contentContainer')">x</button>
+        </div>
+        <div id="contentWindowBody">
+          <div class="content-toolbar">
+            <span class="gamify-calendar-label">Posted lanes</span>
+            <div id="contentLaneLegend" class="content-lane-legend"></div>
+          </div>
+          <div class="month-nav content-month-nav" id="contentMonthNav"></div>
+          <div class="gamify-streak-weekdays" aria-hidden="true">
+            <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+          </div>
+          <div class="content-board-wrap">
+            <div id="contentBoardGrid" class="content-board-grid"></div>
+          </div>
+          <p id="contentStatus" class="content-status">Ready.</p>
+        </div>
+      </div>
 <!-- TODO-->
       <div id="todoContainer" class="quadros" style="display: none">
         <div class="titleBar">
@@ -794,6 +820,7 @@
             <li onclick="clearDisplay(), hideQuadro('calcContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_calculator.ico" width="35" height="35"> Calculator</li>
             <li onclick="hideQuadro('wallpContainer'), hideAppMenu(), clickStart()"><img src="./imagens/w98_directory_pictures.ico" width="35" height="35">Wallpaper</li>
             <li onclick="hideQuadro('dailiesContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_wia_img_check.ico" width="35" height="35">Dailies</li>
+            <li onclick="hideQuadro('contentContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_camera3_vid.ico" width="35" height="35">Content</li>
             <li onclick="hideQuadro('chatContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_message_file.ico" width="35" height="35">Chat Assistant</li>
             <li onclick="hideQuadro('financeContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_calculator.ico" width="35" height="35">Finance Log</li>
             <li onclick="hideQuadro('ideasContainer'), hideAppMenu(), clickStart()"><img src="./imagens/98icons/w98_notepad.ico" width="35" height="35">Ideas</li>

@@ -4957,6 +4957,7 @@ window.onload = function () {
   draggable("financeContainer");
   draggable("connectionsContainer");
   draggable("llmUsageContainer");
+  draggable("contentContainer");
   makeResizable("skillsContainer", {
     minWidth: 540,
     minHeight: 360,
@@ -4965,6 +4966,11 @@ window.onload = function () {
   makeResizable("dailiesContainer", {
     minWidth: 420,
     minHeight: 360,
+  });
+  makeResizable("contentContainer", {
+    minWidth: 460,
+    minHeight: 380,
+    onResize: scheduleContentBoardRender,
   });
   makeResizable("chatContainer", {
     minWidth: 320,
@@ -5615,7 +5621,7 @@ function hideQuadro(idQuadro) {
   const quadro = document.getElementById(`${idQuadro}`);
   if (!quadro) return;
   const opening = window.getComputedStyle(quadro).display === "none";
-  const flexQuadros = ["chatContainer", "workoutContainer", "notesContainer"];
+  const flexQuadros = ["chatContainer", "workoutContainer", "notesContainer", "contentContainer"];
   quadro.style.display = opening
     ? (flexQuadros.includes(idQuadro) ? "flex" : "block")
     : "none";
@@ -5624,6 +5630,9 @@ function hideQuadro(idQuadro) {
   }
   if (opening && idQuadro === "skillsContainer") {
     scheduleGamifyCalendarRender();
+  }
+  if (opening && idQuadro === "contentContainer") {
+    scheduleContentBoardRender();
   }
   if (opening && idQuadro === "chatContainer") {
     requestAnimationFrame(() => {
@@ -6281,6 +6290,334 @@ function renderDailies() {
 
 // Call renderDailies on page load to display any existing dailies
 document.addEventListener("DOMContentLoaded", renderDailies);
+
+// CONTENT BOARD ------------------------------------------------------------
+// A month board per content lane: which lane posted on which day, mirroring
+// the Gamify streak calendar. Local-first (localStorage), with a Supabase
+// mirror in public.content_posts when signed in.
+
+const CONTENT_POSTS_STORAGE_KEY = "contentPosts_v1";
+
+const contentBoardState = {
+  year: new Date().getFullYear(),
+  month: new Date().getMonth(),
+  posts: {},
+  loaded: false,
+  focusLane: "",
+};
+
+function contentCoreApi() {
+  return typeof ContentCore === "object" && ContentCore ? ContentCore : null;
+}
+
+function setContentStatus(message) {
+  const el = document.getElementById("contentStatus");
+  if (el) el.textContent = message;
+}
+
+function readLocalContentPosts() {
+  try {
+    const raw = localStorage.getItem(CONTENT_POSTS_STORAGE_KEY);
+    const core = contentCoreApi();
+    const parsed = raw ? JSON.parse(raw) : {};
+    return core ? core.normalizePosts(parsed) : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function writeLocalContentPosts(posts) {
+  try {
+    localStorage.setItem(CONTENT_POSTS_STORAGE_KEY, JSON.stringify(posts));
+  } catch (_) {}
+}
+
+const CONTENT_MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function formatContentDateKey(key) {
+  const core = contentCoreApi();
+  const parsed = core ? core.parseDateKey(key) : null;
+  if (!parsed) return "";
+  return `${String(parsed.day).padStart(2, "0")} ${CONTENT_MONTH_NAMES[parsed.month]} ${parsed.year}`;
+}
+
+function buildContentLaneLegend(summary) {
+  const host = document.getElementById("contentLaneLegend");
+  const core = contentCoreApi();
+  if (!host || !core) return;
+  host.innerHTML = "";
+
+  core.CONTENT_LANES.forEach((lane) => {
+    const entry = summary[lane.code] || { count: 0, lastDateKey: "" };
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "content-lane-chip";
+    chip.dataset.lane = lane.code;
+    chip.setAttribute("aria-pressed", contentBoardState.focusLane === lane.code ? "true" : "false");
+
+    const dot = document.createElement("span");
+    dot.className = "content-lane-chip-dot";
+    dot.style.backgroundColor = lane.color;
+    chip.appendChild(dot);
+
+    chip.appendChild(document.createTextNode(lane.label));
+
+    const count = document.createElement("span");
+    count.className = "content-lane-chip-count";
+    count.textContent = ` · ${entry.count}`;
+    chip.appendChild(count);
+
+    chip.title = entry.lastDateKey
+      ? `${lane.label}: ${entry.count} this month · last posted ${formatContentDateKey(entry.lastDateKey)}`
+      : `${lane.label}: nothing posted yet`;
+
+    chip.addEventListener("click", function () {
+      contentBoardState.focusLane =
+        contentBoardState.focusLane === lane.code ? "" : lane.code;
+      renderContentBoard();
+    });
+
+    host.appendChild(chip);
+  });
+}
+
+function initContentMonthNav() {
+  const nav = document.getElementById("contentMonthNav");
+  if (!nav) return;
+
+  nav.innerHTML = "";
+  const prevButton = document.createElement("button");
+  prevButton.type = "button";
+  prevButton.textContent = "←";
+  const nextButton = document.createElement("button");
+  nextButton.type = "button";
+  nextButton.textContent = "→";
+  const display = document.createElement("span");
+  display.id = "contentMonthDisplay";
+
+  nav.appendChild(prevButton);
+  nav.appendChild(display);
+  nav.appendChild(nextButton);
+
+  prevButton.addEventListener("click", function () {
+    contentBoardState.month -= 1;
+    if (contentBoardState.month < 0) {
+      contentBoardState.month = 11;
+      contentBoardState.year -= 1;
+    }
+    renderContentBoard();
+  });
+
+  nextButton.addEventListener("click", function () {
+    contentBoardState.month += 1;
+    if (contentBoardState.month > 11) {
+      contentBoardState.month = 0;
+      contentBoardState.year += 1;
+    }
+    renderContentBoard();
+  });
+}
+
+function renderContentBoard() {
+  const core = contentCoreApi();
+  const grid = document.getElementById("contentBoardGrid");
+  if (!grid) return;
+  if (!core) {
+    setContentStatus("Content board needs content-core.js.");
+    return;
+  }
+
+  const year = contentBoardState.year;
+  const month = contentBoardState.month;
+  const posts = contentBoardState.posts;
+  const gridInfo = core.monthGrid(year, month);
+
+  const display = document.getElementById("contentMonthDisplay");
+  if (display) display.textContent = `${CONTENT_MONTH_NAMES[month]} ${year}`;
+
+  buildContentLaneLegend(core.laneSummary(posts, year, month));
+
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+
+  grid.innerHTML = "";
+
+  gridInfo.cells.forEach((cell) => {
+    const cellEl = document.createElement("div");
+    cellEl.className = "content-day";
+
+    const posted = core.lanesOn(posts, cell.dateKey);
+    if (!cell.inMonth) cellEl.classList.add("content-day--outside");
+    if (posted.length > 0) cellEl.classList.add("content-day--has-post");
+    if (cell.inMonth && isCurrentMonth && cell.day === today.getDate()) {
+      cellEl.classList.add("content-day--today");
+    }
+
+    const num = document.createElement("span");
+    num.className = "content-day-num";
+    num.textContent = String(cell.day);
+    cellEl.appendChild(num);
+
+    const dots = document.createElement("div");
+    dots.className = "content-lane-dots";
+
+    core.CONTENT_LANES.forEach((lane) => {
+      const on = posted.indexOf(lane.code) !== -1;
+      const dot = document.createElement("button");
+      dot.type = "button";
+      dot.className = "content-lane-dot";
+      dot.dataset.lane = lane.code;
+      dot.dataset.dateKey = cell.dateKey;
+
+      if (on) {
+        dot.classList.add("content-lane-dot--on");
+        dot.style.backgroundColor = lane.color;
+        dot.title = `${lane.label} posted on ${formatContentDateKey(cell.dateKey)}`;
+      } else {
+        dot.title = `${lane.label} — mark posted`;
+      }
+
+      if (!cell.inMonth && !on) dot.classList.add("content-lane-dot--blank");
+      if (contentBoardState.focusLane && contentBoardState.focusLane !== lane.code) {
+        dot.style.opacity = "0.25";
+      }
+
+      if (cell.inMonth) {
+        dot.addEventListener("click", function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          void toggleContentPost(cell.dateKey, lane.code);
+        });
+      } else {
+        dot.disabled = true;
+      }
+
+      dots.appendChild(dot);
+    });
+
+    cellEl.appendChild(dots);
+    grid.appendChild(cellEl);
+  });
+}
+
+let contentRenderRaf = 0;
+
+function scheduleContentBoardRender() {
+  if (contentRenderRaf) return;
+  contentRenderRaf = requestAnimationFrame(function () {
+    contentRenderRaf = 0;
+    renderContentBoard();
+  });
+}
+
+function isContentBackendActive() {
+  return Boolean(backendState.client && backendState.session);
+}
+
+async function loadContentBackendState() {
+  if (!isContentBackendActive()) return;
+  const userId = getBackendUserId();
+  const core = contentCoreApi();
+  if (!userId || !core) return;
+
+  try {
+    const rows = throwIfSupabaseError(
+      await backendState.client
+        .from("content_posts")
+        .select("lane, posted_on")
+        .eq("user_id", userId),
+    );
+
+    const merged = { ...contentBoardState.posts };
+    (rows || []).forEach((row) => {
+      const lane = String(row.lane || "");
+      const key = String(row.posted_on || "");
+      if (!core.isContentLane(lane) || !core.parseDateKey(key)) return;
+      merged[key] = { ...(merged[key] || {}), [lane]: true };
+    });
+
+    contentBoardState.posts = merged;
+    contentBoardState.loaded = true;
+    writeLocalContentPosts(merged);
+    renderContentBoard();
+  } catch (error) {
+    console.error("Content board load error:", error);
+    setContentStatus(
+      `Could not load posts from the backend: ${describeBackendError(error)}`,
+    );
+  }
+}
+
+async function persistContentPost(dateKey, lane, posted) {
+  if (!isContentBackendActive()) return;
+  const userId = getBackendUserId();
+  if (!userId) return;
+
+  if (posted) {
+    throwIfSupabaseError(
+      await backendState.client
+        .from("content_posts")
+        .upsert(
+          { user_id: userId, lane, posted_on: dateKey },
+          { onConflict: "user_id,lane,posted_on" },
+        ),
+    );
+    return;
+  }
+
+  throwIfSupabaseError(
+    await backendState.client
+      .from("content_posts")
+      .delete()
+      .eq("user_id", userId)
+      .eq("lane", lane)
+      .eq("posted_on", dateKey),
+  );
+}
+
+async function toggleContentPost(dateKey, lane) {
+  const core = contentCoreApi();
+  if (!core) return;
+
+  const before = contentBoardState.posts;
+  const result = core.togglePost(before, dateKey, lane);
+  const laneLabel = (core.laneMeta(lane) || {}).label || lane;
+  const when = formatContentDateKey(dateKey);
+
+  contentBoardState.posts = result.posts;
+  writeLocalContentPosts(result.posts);
+  renderContentBoard();
+
+  if (!isContentBackendActive()) {
+    setContentStatus(
+      `${result.posted ? "Marked" : "Cleared"} ${laneLabel} on ${when} (saved locally).`,
+    );
+    return;
+  }
+
+  try {
+    await persistContentPost(dateKey, lane, result.posted);
+    setContentStatus(`${result.posted ? "Marked" : "Cleared"} ${laneLabel} on ${when}.`);
+  } catch (error) {
+    console.error("Content board save error:", error);
+    contentBoardState.posts = before;
+    writeLocalContentPosts(before);
+    renderContentBoard();
+    setContentStatus(`Could not save: ${describeBackendError(error)}`);
+  }
+}
+
+function initContentBoard() {
+  contentBoardState.posts = readLocalContentPosts();
+  initContentMonthNav();
+  renderContentBoard();
+  void loadContentBackendState();
+}
+
+document.addEventListener("DOMContentLoaded", initContentBoard);
 
 const LOCAL_WORKER_PROXY_DEFAULT = "http://127.0.0.1:8787";
 
