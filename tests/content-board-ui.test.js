@@ -38,6 +38,9 @@ test("the board renders lanes per day and a square window frame", () => {
   assert.match(css, /\.content-board-grid \{/);
   assert.match(css, /\.content-lane-dot \{/);
   assert.match(css, /\.content-day \{/);
+  // Window frame: without flex-direction the title bar lays out on the LEFT.
+  assert.match(css, /#contentContainer \{[^}]*flex-direction: column;/);
+  assert.match(css, /#contentContainer \.titleBar \{[^}]*flex: none;/);
 });
 
 test("opening the Content window repaints the board", () => {

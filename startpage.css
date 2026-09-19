@@ -453,6 +453,23 @@
 
 /* CONTENT BOARD ---------------------------------------------------------- */
 
+#contentContainer {
+    display: none;
+    flex-direction: column;
+    min-width: 460px;
+    min-height: 380px;
+    width: min(760px, 94vw);
+    height: min(86vh, 780px);
+    max-width: 96vw;
+    max-height: 96vh;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+#contentContainer .titleBar {
+    flex: none;
+}
+
 #contentWindowBody {
     flex: 1 1 auto;
     min-height: 0;
