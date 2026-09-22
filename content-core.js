@@ -10,9 +10,9 @@
   // order of the per-day lane dots inside a calendar cell.
   const CONTENT_LANES = [
     { code: "standup", label: "Stand Up", color: "#ef5350" },
-    { code: "comics", label: "Comics Legendados", color: "#7e57c2" },
+    { code: "comics", label: "Comics", color: "#7e57c2" },
     { code: "moc", label: "MoC / Personal", color: "#ff8a00" },
-    { code: "teacher", label: "Nerd / Teacher", color: "#00c853" },
+    { code: "teacher", label: "Teacher", color: "#00c853" },
     { code: "freela", label: "Freela", color: "#00bcd4" },
   ];
 
